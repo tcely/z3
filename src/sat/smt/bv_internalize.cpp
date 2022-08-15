@@ -137,7 +137,9 @@ namespace bv {
             return true;
 
         SASSERT(!n || !n->is_attached_to(get_id()));
-        bool suppress_args = !reflect() && !m.is_considered_uninterpreted(a->get_decl());
+        bool suppress_args = !reflect() 
+            && !m.is_considered_uninterpreted(a->get_decl())
+            && !bv.is_int2bv(e) && !bv.is_bv2int(e);
         if (!n)
             n = mk_enode(e, suppress_args);
 
@@ -434,6 +436,7 @@ namespace bv {
         SASSERT(bv.is_int2bv(n));
         euf::enode* e = expr2enode(n);
         mk_bits(e->get_th_var(get_id()));
+        get_var(e->get_arg(0));
         assert_int2bv_axiom(n);
     }
 

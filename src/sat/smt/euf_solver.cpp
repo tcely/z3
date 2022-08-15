@@ -309,7 +309,7 @@ namespace euf {
         if (!n)
             return;
         bool sign = l.sign();   
-        m_egraph.set_value(n, sign ? l_false : l_true);
+        m_egraph.set_value(n, sign ? l_false : l_true, justification::external(to_ptr(l)));
         for (auto const& th : enode_th_vars(n))
             m_id2solver[th.get_id()]->asserted(l);
 
@@ -614,7 +614,7 @@ namespace euf {
             if (si.is_bool_op(e)) 
                 lit = literal(replay.m[e], false);
             else 
-                lit = si.internalize(e, true);
+                lit = si.internalize(e, false);
             VERIFY(lit.var() == v);     
             if (!m_egraph.find(e) && (!m.is_iff(e) && !m.is_or(e) && !m.is_and(e) && !m.is_not(e))) {
                 ptr_buffer<euf::enode> args;
@@ -778,7 +778,7 @@ namespace euf {
         }
         for (auto const& thv : enode_th_vars(n)) {
             auto* th = m_id2solver.get(thv.get_id(), nullptr);
-            if (th && !th->is_fixed(thv.get_var(), val, explain))
+            if (th && th->is_fixed(thv.get_var(), val, explain))
                 return true;
         }
         return false;
@@ -1067,10 +1067,7 @@ namespace euf {
         user_propagator::fresh_eh_t& fresh_eh) {
         m_user_propagator = alloc(user_solver::solver, *this);
         m_user_propagator->add(ctx, push_eh, pop_eh, fresh_eh);
-        for (unsigned i = m_scopes.size(); i-- > 0; )
-            m_user_propagator->push();
-        m_solvers.push_back(m_user_propagator);
-        m_id2solver.setx(m_user_propagator->get_id(), m_user_propagator, nullptr);
+        add_solver(m_user_propagator);
     }
 
     bool solver::watches_fixed(enode* n) const {

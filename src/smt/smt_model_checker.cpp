@@ -218,7 +218,7 @@ namespace smt {
             TRACE("model_checker", tout << "Got some value " << sk_value << "\n";);
 
             if (use_inv) {
-	            unsigned sk_term_gen = 0;
+                unsigned sk_term_gen = 0;
                 expr * sk_term = m_model_finder.get_inv(q, i, sk_value, sk_term_gen);
                 if (sk_term != nullptr) {
                     TRACE("model_checker", tout << "Found inverse " << mk_pp(sk_term, m) << "\n";);
@@ -243,6 +243,8 @@ namespace smt {
             func_decl * f = nullptr;
             if (autil.is_as_array(sk_value, f) && cex->get_func_interp(f) && cex->get_func_interp(f)->get_interp()) {
                 expr_ref body(cex->get_func_interp(f)->get_interp(), m);
+                if (contains_model_value(body))
+                    return false;                    
                 ptr_vector<sort> sorts(f->get_arity(), f->get_domain());
                 svector<symbol> names;
                 for (unsigned i = 0; i < f->get_arity(); ++i) {
@@ -258,7 +260,7 @@ namespace smt {
             bindings.set(num_decls - i - 1, sk_value);
         }
 
-        TRACE("model_checker", tout << q->get_qid() << " found (use_inv: " << use_inv << ") new instance: " << bindings << "\n" << defs << "\n";);
+        TRACE("model_checker", tout << q->get_qid() << " found (use_inv: " << use_inv << ") new instance: " << bindings << "\ndefs:\n" << defs << "\n";);
         if (!defs.empty()) def = mk_and(defs);
         max_generation = std::max(m_qm->get_generation(q), max_generation);
         add_instance(q, bindings, max_generation, def.get());
@@ -395,12 +397,14 @@ namespace smt {
             m_fparams = alloc(smt_params, m_context->get_fparams());
             m_fparams->m_relevancy_lvl = 0; // no relevancy since the model checking problems are quantifier free
             m_fparams->m_case_split_strategy = CS_ACTIVITY; // avoid warning messages about smt.case_split >= 3.
-            m_fparams->m_arith_dump_lemmas = false;
+            m_fparams->m_axioms2files = false;
+            m_fparams->m_lemmas2console = false;            
         }
         if (!m_aux_context) {
             symbol logic;
             params_ref p;
-            p.set_bool("arith.dump_lemmas", false);
+            p.set_bool("solver.axioms2files", false);
+            p.set_bool("solver.lemmas2console", false);
             m_aux_context = m_context->mk_fresh(&logic, m_fparams.get(), p);
         }
     }
@@ -453,7 +457,7 @@ namespace smt {
         TRACE("model_checker", tout << "model checker result: " << (num_failures == 0) << "\n";);
         m_max_cexs += m_params.m_mbqi_max_cexs;
 
-        if (num_failures == 0 && (!m_context->validate_model())) {
+        if (num_failures == 0 && !m_context->validate_model()) {
             num_failures = 1;
             // this time force expanding recursive function definitions
             // that are not forced true in the current model.

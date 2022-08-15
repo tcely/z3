@@ -69,7 +69,7 @@ namespace Microsoft.Z3
                 IntPtr cfg = Native.Z3_mk_config();
                 foreach (KeyValuePair<string, string> kv in settings)
                     Native.Z3_set_param_value(cfg, kv.Key, kv.Value);
-                m_ctx = Native.Z3_mk_context_rc(cfg);
+                m_ctx = Native.Z3_mk_context(cfg);
                 Native.Z3_del_config(cfg);
                 InitContext();
             }
@@ -99,6 +99,17 @@ namespace Microsoft.Z3
             var ts = t.ToArray();
             return Native.Z3_mk_mul(nCtx, (uint)(ts?.Length ?? 0), ts);
         }
+
+        /// <summary>
+        /// Create an expression representing <c>t[0] - t[1] - ...</c>.
+        /// </summary>
+	public Z3_ast MkSub(params Z3_ast[] t)
+        {
+            Debug.Assert(t != null);
+            Debug.Assert(t.All(a => a != IntPtr.Zero));
+            var ts = t.ToArray();
+	    return Native.Z3_mk_sub(nCtx, (uint)(ts?.Length ?? 0), ts);
+	}
 
         /// <summary>
         /// Create an expression representing <c>t1 / t2</c>.
@@ -1341,13 +1352,13 @@ namespace Microsoft.Z3
 
         #region Tracing
         /// <summary>
-        /// Enable tracint to file
+        /// Enable trace to file
         /// </summary>
-        /// <param name="file"></param>
-        public void TraceToFile(string file)
+        /// <param name="tag">Tag to trace</param>
+        public static void EnableTrace(string tag)
         {
-            Debug.Assert(!string.IsNullOrEmpty(file));
-            Native.Z3_enable_trace(file);
+            Debug.Assert(!string.IsNullOrEmpty(tag));
+            Native.Z3_enable_trace(tag);
         }
 
         #endregion
