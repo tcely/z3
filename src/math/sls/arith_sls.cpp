@@ -1,5 +1,6 @@
 
 #include "math/sls/arith_sls.h"
+#include <iostream>
 
 namespace arith {
 
