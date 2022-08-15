@@ -3,6 +3,7 @@ z3_add_component(sat_smt
     arith_axioms.cpp
     arith_diagnostics.cpp
     arith_internalize.cpp
+    arith_sls.cpp
     arith_solver.cpp
     array_axioms.cpp
     array_diagnostics.cpp

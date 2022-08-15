@@ -223,7 +223,6 @@ class lar_solver : public column_namer {
     void insert_row_with_changed_bounds(unsigned rid);
     void detect_rows_with_changed_bounds_for_column(unsigned j);
     void detect_rows_with_changed_bounds();
-    void set_value_for_nbasic_column(unsigned j, const impq & new_val);
     void update_x_and_inf_costs_for_columns_with_changed_bounds();
     void update_x_and_inf_costs_for_columns_with_changed_bounds_tableau();
     void solve_with_core_solver();
@@ -406,6 +405,8 @@ public:
     bool column_corresponds_to_term(unsigned) const;
     inline unsigned row_count() const { return A_r().row_count(); }
     bool var_is_registered(var_index vj) const;
+
+    void set_value_for_nbasic_column(unsigned j, const impq & new_val);
     void clear_inf_set() {
         m_mpq_lar_core_solver.m_r_solver.inf_set().clear();        
     }

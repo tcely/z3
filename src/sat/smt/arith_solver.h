@@ -194,7 +194,6 @@ namespace arith {
         // integer arithmetic
         scoped_ptr<lp::int_solver>   m_lia;
 
-
         scoped_ptr<lp::lar_solver>   m_solver;
         resource_limit               m_resource_limit;
         lp_bounds                    m_new_bounds;
@@ -419,6 +418,7 @@ namespace arith {
         void false_case_of_check_nla(const nla::lemma& l);        
         void dbg_finalize_model(model& mdl);
 
+        void sls();
 
     public:
         solver(euf::solver& ctx, theory_id id);
@@ -427,8 +427,8 @@ namespace arith {
         void get_antecedents(literal l, sat::ext_justification_idx idx, literal_vector& r, bool probing) override;
         void asserted(literal l) override;
         sat::check_result check() override;
-        void simplify() override {}
-        void init_search() override {}
+        void simplify() override;
+        void init_search() override;
 
         std::ostream& display(std::ostream& out) const override;
         std::ostream& display_justification(std::ostream& out, sat::ext_justification_idx idx) const override;

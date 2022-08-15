@@ -710,6 +710,15 @@ namespace arith {
             m_nla->pop(num_scopes);
         TRACE("arith_verbose", tout << "num scopes: " << num_scopes << " new scope level: " << m_scopes.size() << "\n";);
         th_euf_solver::pop_core(num_scopes);
+
+
+        static unsigned count = 0;
+        ++count;
+        if (count % 10 == 0)
+            sls();
+        if (ctx.num_final_checks() > 0) {
+            sls();
+        }
     }
 
     void solver::del_bounds(unsigned old_size) {

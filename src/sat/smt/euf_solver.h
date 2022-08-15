@@ -444,6 +444,7 @@ namespace euf {
         void set_mk_solver(std::function<::solver*(void)>& mk) { m_mk_solver = mk; }
 
 
+        unsigned num_final_checks() const { return m_stats.m_final_checks; }
     };
 
     inline std::ostream& operator<<(std::ostream& out, clause_pp const& p) {
