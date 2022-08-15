@@ -410,7 +410,6 @@ public:
     inline unsigned row_count() const { return A_r().row_count(); }
     bool var_is_registered(var_index vj) const;
 
-    void set_value_for_nbasic_column(unsigned j, const impq & new_val);
     void clear_inf_set() {
         m_mpq_lar_core_solver.m_r_solver.inf_set().clear();        
     }
