@@ -279,6 +279,7 @@ stages:
       continueOnError: true
       displayName: 'Sign Package'
       inputs:
+        arguments: '-Verbosity detailed'
         ConnectedServiceName: 'z3-esrp-signing-2'
         FolderPath: $(Build.ArtifactStagingDirectory)
         Pattern: Microsoft.Z3.$(NightlyVersion).nupkg
@@ -290,14 +291,14 @@ stages:
               "OperationCode" : "NuGetSign",
               "Parameters" : {},
               "ToolName" : "sign",
-              "ToolVersion" : "1.0"
+              "ToolVersion" : "2.0"
             },
             {
               "KeyCode" : "CP-401405",
               "OperationCode" : "NuGetVerify",
               "Parameters" : {},
               "ToolName" : "sign",
-              "ToolVersion" : "1.0"
+              "ToolVersion" : "2.0"
             }
           ]
         SessionTimeout: '60'
@@ -318,14 +319,14 @@ stages:
               "OperationCode" : "NuGetSign",
               "Parameters" : {},
               "ToolName" : "sign",
-              "ToolVersion" : "1.0"
+              "ToolVersion" : "2.0"
             },
             {
               "KeyCode" : "CP-401405",
               "OperationCode" : "NuGetVerify",
               "Parameters" : {},
               "ToolName" : "sign",
-              "ToolVersion" : "1.0"
+              "ToolVersion" : "2.0"
             }
           ]
         SessionTimeout: '60'
@@ -395,14 +396,14 @@ stages:
               "OperationCode" : "NuGetSign",
               "Parameters" : {},
               "ToolName" : "sign",
-              "ToolVersion" : "1.0"
+              "ToolVersion" : "2.0"
             },
             {
               "KeyCode" : "CP-401405",
               "OperationCode" : "NuGetVerify",
               "Parameters" : {},
               "ToolName" : "sign",
-              "ToolVersion" : "1.0"
+              "ToolVersion" : "2.0"
             }
           ]
         SessionTimeout: '60'
@@ -423,14 +424,14 @@ stages:
               "OperationCode" : "NuGetSign",
               "Parameters" : {},
               "ToolName" : "sign",
-              "ToolVersion" : "1.0"
+              "ToolVersion" : "2.0"
             },
             {
               "KeyCode" : "CP-401405",
               "OperationCode" : "NuGetVerify",
               "Parameters" : {},
               "ToolName" : "sign",
-              "ToolVersion" : "1.0"
+              "ToolVersion" : "2.0"
             }
           ]
         SessionTimeout: '60'
