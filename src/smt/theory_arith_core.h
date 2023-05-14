@@ -1148,6 +1148,7 @@ namespace smt {
                 mk_clause(~l1, l2, 3, coeffs);
             }
         }
+        ++m_stats.m_bound_axioms;
     }
 
     template<typename Ext>
@@ -1489,6 +1490,19 @@ namespace smt {
         unsigned old_idx = m_final_check_idx;
         final_check_status result = FC_DONE;
         final_check_status ok;
+
+        //display(verbose_stream());
+        //exit(0);
+
+
+        if (false)
+        {
+            verbose_stream() << "final\n";
+            ::statistics stats;
+            collect_statistics(stats);
+            stats.display(verbose_stream());
+        }
+
         do {
             if (ctx.get_cancel_flag()) {
                 return FC_GIVEUP;
@@ -2812,10 +2826,11 @@ namespace smt {
     template<typename Ext>
     void theory_arith<Ext>::explain_bound(row const & r, int idx, bool is_lower, inf_numeral & delta, antecedents& ante) {
         SASSERT(delta >= inf_numeral::zero());
-        TRACE("arith_conflict", tout << "relax: " << relax_bounds() << " lits: " << ante.lits().size() << " eqs: " << ante.eqs().size() << " idx: " << idx << "\n";);
         if (!relax_bounds() && (!ante.lits().empty() || !ante.eqs().empty())) {
             return;
         }
+
+
         row_entry const & entry = r[idx];
         numeral           coeff = entry.m_coeff;
         if (relax_bounds()) {
@@ -2835,6 +2850,7 @@ namespace smt {
                 if (!b->has_justification()) {
                     continue;
                 }
+
                 if (!relax_bounds() || delta.is_zero()) {
                     TRACE("propagate_bounds", tout << "push justification: v" << it->m_var << "\n";);
                     b->push_justification(ante, it->m_coeff, coeffs_enabled());

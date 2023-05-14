@@ -219,7 +219,7 @@ namespace smt {
         {
             std::function<expr*(void)> fn = [&]() { return m.mk_or(bound, m.mk_not(bound)); };
             scoped_trace_stream _sts(*this, fn);
-            IF_VERBOSE(10, verbose_stream() << "branch " << bound << "\n");
+            IF_VERBOSE(4, verbose_stream() << "branch " << bound << "\n");
             TRACE("arith_int", tout << mk_bounded_pp(bound, m) << "\n";);
             ctx.internalize(bound, true);
             ctx.mark_as_relevant(bound.get());
@@ -670,13 +670,14 @@ namespace smt {
         TRACE("gomory_cut", tout << "new cut:\n" << bound << "\n"; ante.display(tout););
         literal l     = null_literal;
         context & ctx = get_context();
+        ctx.get_rewriter()(bound);
         {
             std::function<expr*(void)> fn = [&]() { return bound; };
             scoped_trace_stream _sts(*this, fn);
             ctx.internalize(bound, true);
         }
         l = ctx.get_literal(bound);
-        IF_VERBOSE(10, verbose_stream() << "cut " << bound << "\n");
+        IF_VERBOSE(4, verbose_stream() << "cut " << bound << "\n");
         ctx.mark_as_relevant(l);
         auto js = ctx.mk_justification(
             gomory_cut_justification(
@@ -906,6 +907,7 @@ namespace smt {
         bool inf_l, inf_u;
         inf_numeral l, u;
         numeral m;
+        unsigned num_patched = 0, num_not_patched = 0;
         for (theory_var v = 0; v < num; v++) {
             if (!is_non_base(v)) 
                 continue;
@@ -915,6 +917,7 @@ namespace smt {
             // check whether value of v is already a multiple of m.
             if ((get_value(v).get_rational() / m).is_int())
                 continue;
+
             TRACE("patch_int",
                   tout << "TARGET v" << v << " -> [";
                   if (inf_l) tout << "-oo"; else tout << ceil(l);
@@ -922,6 +925,15 @@ namespace smt {
                   if (inf_u) tout << "oo"; else tout << floor(u);
                   tout << "]";
                   tout << ", m: " << m << ", val: " << get_value(v) << ", is_int: " << is_int(v) << "\n";);
+
+
+            verbose_stream() << "TARGET v" << v << " -> [";
+            if (inf_l) verbose_stream() << "-oo"; else verbose_stream() << ceil(l);
+            verbose_stream() << ", ";
+            if (inf_u) verbose_stream() << "oo"; else verbose_stream() << floor(u);
+            verbose_stream() << "]";
+            verbose_stream() << ", m: " << m << ", val: " << get_value(v) << ", is_int: " << is_int(v) << "\n";
+
             if (!inf_l)
                 l = ceil(l);
             if (!inf_u)
@@ -932,8 +944,11 @@ namespace smt {
                 if (!inf_u)
                     u = m*floor(u/m);
             }
-            if (!inf_l && !inf_u && l > u)
+            if (!inf_l && !inf_u && l > u) {
+                ++num_not_patched;
                 continue; // cannot patch
+            }
+            ++num_patched;
             if (!inf_l)
                 set_value(v, l);
             else if (!inf_u)
@@ -942,6 +957,7 @@ namespace smt {
                 set_value(v, inf_numeral(0));
         }
         SASSERT(m_to_patch.empty());
+        verbose_stream() << "patched " << num_patched << " not patched " << num_not_patched << "\n";
     }
 
     /**

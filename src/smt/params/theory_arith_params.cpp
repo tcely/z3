@@ -52,7 +52,7 @@ void theory_arith_params::display(std::ostream & out) const {
     DISPLAY_PARAM(m_arith_blands_rule_threshold);
     DISPLAY_PARAM(m_arith_propagate_eqs);
     DISPLAY_PARAM((unsigned)m_arith_bound_prop);
-    DISPLAY_PARAM(m_arith_stronger_lemmas);
+    DISPLAY_PARAM(m_arith_relax_bounds);
     DISPLAY_PARAM(m_arith_skip_rows_with_big_coeffs);
     DISPLAY_PARAM(m_arith_max_lemma_size);
     DISPLAY_PARAM(m_arith_small_lemma_size);

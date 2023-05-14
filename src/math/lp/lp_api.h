@@ -103,6 +103,7 @@ namespace lp_api {
         unsigned m_conflicts;
         unsigned m_bound_propagations1;
         unsigned m_bound_propagations2;
+        unsigned m_bound_axioms;
         unsigned m_assert_diseq;
         unsigned m_assert_eq;
         unsigned m_gomory_cuts;
@@ -113,21 +114,22 @@ namespace lp_api {
             memset(this, 0, sizeof(*this));
         }
         void collect_statistics(statistics& st) const {
-            st.update("arith-lower", m_assert_lower);
-            st.update("arith-upper", m_assert_upper);
-            st.update("arith-propagations", m_bounds_propagations);
-            st.update("arith-iterations", m_num_iterations);
-            st.update("arith-pivots", m_need_to_solve_inf);
-            st.update("arith-plateau-iterations", m_num_iterations_with_no_progress);
-            st.update("arith-fixed-eqs", m_fixed_eqs);
-            st.update("arith-conflicts", m_conflicts);
-            st.update("arith-bound-propagations-lp", m_bound_propagations1);
-            st.update("arith-bound-propagations-cheap", m_bound_propagations2);
-            st.update("arith-diseq", m_assert_diseq);
-            st.update("arith-eq",    m_assert_eq);
-            st.update("arith-gomory-cuts", m_gomory_cuts);
-            st.update("arith-assume-eqs", m_assume_eqs);
-            st.update("arith-branch", m_branch);
+            st.update("arith assert lower", m_assert_lower);
+            st.update("arith assert upper", m_assert_upper);
+            st.update("arith propagations", m_bounds_propagations);
+            st.update("arith iterations", m_num_iterations);
+            st.update("arith pivots", m_need_to_solve_inf);
+            st.update("arith plateau iterations", m_num_iterations_with_no_progress);
+            st.update("arith fixed eqs", m_fixed_eqs);
+            st.update("arith conflicts", m_conflicts);
+            st.update("arith bound propagations lp", m_bound_propagations1);
+            st.update("arith bound propagations cheap", m_bound_propagations2);
+            st.update("arith bound axioms", m_bound_axioms);
+            st.update("arith diseq", m_assert_diseq);
+            st.update("arith eq",    m_assert_eq);
+            st.update("arith gomory cuts", m_gomory_cuts);
+            st.update("arith assume eqs", m_assume_eqs);
+            st.update("arith branch", m_branch);
         }
     };
 

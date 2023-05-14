@@ -246,7 +246,7 @@ void smt_params::setup_QF_LRA(static_features const& st) {
     m_phase_selection       = PS_THEORY;
     if (!st.m_cnf) {
         m_restart_strategy      = RS_GEOMETRIC;
-        m_arith_stronger_lemmas = false;
+        m_arith_relax_bounds = false;
         m_restart_adaptive      = false;
     }
     m_arith_small_lemma_size = 32;
@@ -288,7 +288,7 @@ void smt_params::setup_QF_LIA(static_features const& st) {
     }
     if (st.m_num_bin_clauses + st.m_num_units == st.m_num_clauses && st.m_cnf && st.m_arith_k_sum > rational(100000)) {
         m_arith_bound_prop      = bound_prop_mode::BP_NONE;
-        m_arith_stronger_lemmas = false;
+        m_arith_relax_bounds    = false;
     }
 }
 

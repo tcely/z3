@@ -86,12 +86,12 @@ void lar_core_solver::solve() {
     TRACE("lar_solver", tout << m_r_solver.get_status() << "\n";);
     lp_assert(m_r_solver.non_basic_columns_are_set_correctly());
     lp_assert(m_r_solver.inf_set_is_correct());
-	TRACE("find_feas_stats", tout << "infeasibles = " << m_r_solver.inf_set_size() << ", int_infs = " << get_number_of_non_ints() << std::endl;);
-	if (m_r_solver.current_x_is_feasible() && m_r_solver.m_look_for_feasible_solution_only) {
-            m_r_solver.set_status(lp_status::OPTIMAL);
-            TRACE("lar_solver", tout << m_r_solver.get_status() << "\n";);
-            return;
-	}
+    TRACE("find_feas_stats", tout << "infeasibles = " << m_r_solver.inf_set_size() << ", int_infs = " << get_number_of_non_ints() << std::endl;);
+    if (m_r_solver.current_x_is_feasible() && m_r_solver.m_look_for_feasible_solution_only) {
+        m_r_solver.set_status(lp_status::OPTIMAL);
+        TRACE("lar_solver", tout << m_r_solver.get_status() << "\n";);
+        return;
+    }
     ++settings().stats().m_need_to_solve_inf;
     lp_assert( r_basis_is_OK());
      

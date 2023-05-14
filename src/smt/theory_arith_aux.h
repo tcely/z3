@@ -2141,6 +2141,8 @@ namespace smt {
 
         if (candidates.empty())
             return;
+
+        verbose_stream() << "candidates " << candidates.size() << "\n";
         m_tmp_var_set.reset();
         m_tmp_var_set2.reset();
         for (theory_var v : candidates) {

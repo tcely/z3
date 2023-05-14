@@ -43,7 +43,7 @@ namespace smt {
     struct theory_arith_stats {
         unsigned m_conflicts, m_add_rows, m_pivots, m_diseq_cs, m_gomory_cuts, m_branches, m_gcd_tests, m_gcd_conflicts, m_patches, m_patches_succ;
         unsigned m_assert_lower, m_assert_upper, m_assert_diseq, m_core2th_eqs, m_core2th_diseqs;
-        unsigned m_th2core_eqs, m_th2core_diseqs, m_bound_props, m_offset_eqs, m_fixed_eqs, m_offline_eqs;
+        unsigned m_th2core_eqs, m_th2core_diseqs, m_bound_props, m_bound_axioms, m_offset_eqs, m_fixed_eqs, m_offline_eqs;
         unsigned m_max_min; 
         unsigned m_assume_eqs;
         unsigned m_gb_simplify, m_gb_superpose, m_gb_compute_basis, m_gb_num_processed;
@@ -541,7 +541,7 @@ namespace smt {
         double adaptive_assertion_threshold() const { return m_params.m_arith_adaptive_assertion_threshold; }
         unsigned max_lemma_size() const { return m_params.m_arith_max_lemma_size; }
         unsigned small_lemma_size() const { return m_params.m_arith_small_lemma_size; }
-        bool relax_bounds() const { return m_params.m_arith_stronger_lemmas; }
+        bool relax_bounds() const { return m_params.m_arith_relax_bounds; }
         bool skip_big_coeffs() const { return m_params.m_arith_skip_rows_with_big_coeffs; }
         bool process_atoms() const;
         unsigned get_num_conflicts() const { return m_num_conflicts; }

@@ -44,14 +44,12 @@ class int_solver {
         int_solver&         lia;
         lar_solver&         lra;
         lar_core_solver&    lrac;
-        unsigned            m_num_nbasic_patches;
-        unsigned            m_patch_cost;
-        unsigned            m_next_patch;
-        unsigned            m_delay;
+        unsigned            m_patch_success = 0;
+        unsigned            m_patch_fail = 0;
     public:
         patcher(int_solver& lia);
-        bool should_apply();
-        lia_move operator()();
+        bool should_apply() const { return true; }
+        lia_move operator()() { return patch_nbasic_columns(); }
         void patch_nbasic_column(unsigned j);
     private:
         lia_move patch_nbasic_columns();

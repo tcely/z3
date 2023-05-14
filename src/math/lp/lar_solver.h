@@ -366,8 +366,8 @@ public:
                 }
     }
 
-    bool is_fixed_at_bound(column_index const& j);
-    bool has_fixed_at_bound();
+    bool is_fixed_at_bound(column_index const& j, vector<std::tuple<explanation, column_index, bool, mpq>>& bounds);
+    bool has_fixed_at_bound(vector<std::tuple<explanation, column_index, bool, mpq>>& bounds);
     
     bool is_fixed(column_index const& j) const { return column_is_fixed(j); }    
     inline column_index to_column_index(unsigned v) const { return column_index(external_to_column_index(v)); }
@@ -376,6 +376,7 @@ public:
     bool compare_values(var_index j, lconstraint_kind kind, const mpq & right_side);
     var_index add_term(const vector<std::pair<mpq, var_index>> & coeffs, unsigned ext_i);
     void register_existing_terms();
+    var_index ensure_column(var_index vi);
     constraint_index add_var_bound(var_index, lconstraint_kind, const mpq &);
     constraint_index add_var_bound_check_on_equal(var_index, lconstraint_kind, const mpq &, var_index&);
     

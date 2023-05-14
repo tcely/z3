@@ -117,10 +117,10 @@ template <typename T, typename X> void lp_core_solver_base<T, X>::
 add_delta_to_entering(unsigned entering, const X& delta) {
     m_x[entering] += delta;
      
-        for (const auto & c : m_A.m_columns[entering]) {
-            unsigned i = c.var();
-            m_x[m_basis[i]] -= delta * m_A.get_val(c);
-        }
+    for (const auto & c : m_A.m_columns[entering]) {
+        unsigned i = c.var();
+        m_x[m_basis[i]] -= delta * m_A.get_val(c);
+    }
 }
 
 
@@ -295,7 +295,7 @@ divide_row_by_pivot(unsigned pivot_row, unsigned pivot_col) {
 }
 template <typename T, typename X> bool lp_core_solver_base<T, X>::
 pivot_column_tableau(unsigned j, unsigned piv_row_index) {
-	if (!divide_row_by_pivot(piv_row_index, j))
+    if (!divide_row_by_pivot(piv_row_index, j))
         return false;
     auto &column = m_A.m_columns[j];
     int pivot_col_cell_index = -1;
@@ -406,15 +406,16 @@ template <typename T, typename X>  void lp_core_solver_base<T, X>::transpose_row
 }
 // j is the new basic column, j_basic - the leaving column
 template <typename T, typename X> bool lp_core_solver_base<T, X>::pivot_column_general(unsigned j, unsigned j_basic, indexed_vector<T> & w) {
-	lp_assert(m_basis_heading[j] < 0);
-	lp_assert(m_basis_heading[j_basic] >= 0);
-	unsigned row_index = m_basis_heading[j_basic];
-	  // the tableau case
-	if (pivot_column_tableau(j, row_index))
-		change_basis(j, j_basic);
-	else return false;
-	
-	return true;
+    lp_assert(m_basis_heading[j] < 0);
+    lp_assert(m_basis_heading[j_basic] >= 0);
+    unsigned row_index = m_basis_heading[j_basic];
+    // the tableau case
+    if (pivot_column_tableau(j, row_index))
+        change_basis(j, j_basic);
+    else 
+        return false;
+    
+    return true;
 }
 
 

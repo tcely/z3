@@ -507,7 +507,7 @@ namespace smt {
         TRACE("utvpi", a.display(*this, tout); tout << "\n";);       
         int edge_id = a.get_asserted_edge();
         if (!enable_edge(edge_id)) {
-            m_graph.traverse_neg_cycle2(m_params.m_arith_stronger_lemmas, m_nc_functor);
+            m_graph.traverse_neg_cycle2(m_params.m_arith_relax_bounds, m_nc_functor);
             set_conflict();
             return false;
         }

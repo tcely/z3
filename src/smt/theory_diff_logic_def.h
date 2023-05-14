@@ -695,7 +695,7 @@ void theory_diff_logic<Ext>::new_edge(dl_var src, dl_var dst, unsigned num_edges
 template<typename Ext>
 void theory_diff_logic<Ext>::set_neg_cycle_conflict() {
     m_nc_functor.reset();
-    m_graph.traverse_neg_cycle2(m_params.m_arith_stronger_lemmas, m_nc_functor);
+    m_graph.traverse_neg_cycle2(m_params.m_arith_relax_bounds, m_nc_functor);
     inc_conflicts();
     literal_vector const& lits = m_nc_functor.get_lits();
     TRACE("arith_conflict", 

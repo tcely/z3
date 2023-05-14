@@ -58,7 +58,7 @@ struct theory_arith_params {
     unsigned                m_arith_blands_rule_threshold = 1000;
     bool                    m_arith_propagate_eqs = true;
     bound_prop_mode         m_arith_bound_prop = bound_prop_mode::BP_REFINE;
-    bool                    m_arith_stronger_lemmas = true;
+    bool                    m_arith_relax_bounds = true;
     bool                    m_arith_skip_rows_with_big_coeffs = true;
     unsigned                m_arith_max_lemma_size = 128; 
     unsigned                m_arith_small_lemma_size = 16;

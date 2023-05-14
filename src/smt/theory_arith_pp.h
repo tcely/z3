@@ -33,13 +33,14 @@ namespace smt {
         st.update("arith assert upper", m_stats.m_assert_upper);
         st.update("arith assert diseq", m_stats.m_assert_diseq);
         st.update("arith bound prop", m_stats.m_bound_props);
+        st.update("arith bound axioms", m_stats.m_bound_axioms);
         st.update("arith fixed eqs", m_stats.m_fixed_eqs);
         st.update("arith assume eqs", m_stats.m_assume_eqs);
         st.update("arith offset eqs", m_stats.m_offset_eqs);
         st.update("arith gcd tests", m_stats.m_gcd_tests);
         st.update("arith gcd conflicts", m_stats.m_gcd_conflicts);
-        st.update("arith ineq splits", m_stats.m_branches);
         st.update("arith gomory cuts", m_stats.m_gomory_cuts);
+        st.update("arith branch", m_stats.m_branches);
         st.update("arith branch int", m_stats.m_branch_infeasible_int);
         st.update("arith branch var", m_stats.m_branch_infeasible_var);
         st.update("arith patches", m_stats.m_patches);
