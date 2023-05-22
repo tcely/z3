@@ -162,13 +162,14 @@ template <typename T, typename X>void lp_primal_core_solver<T, X>::advance_on_en
         return;
     }
     if (!is_zero(t)) {
-        if (this->current_x_is_feasible() ) {
+        if (this->current_x_is_feasible()) {
             if (m_sign_of_entering_delta == -1)
                 t = -t;
         }
         this->update_basis_and_x_tableau(entering, leaving, t);
         this->iters_with_no_cost_growing() = 0;
-    } else {
+    }
+    else {
         this->pivot_column_tableau(entering, this->m_basis_heading[leaving]);
         this->change_basis(entering, leaving);
     }

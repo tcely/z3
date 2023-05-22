@@ -14,34 +14,51 @@
 
 namespace lp {
 
-int_solver::patcher::patcher(int_solver& lia):
-    lia(lia),
-    lra(lia.lra),
-    lrac(lia.lrac)
-{}
-
-
-lia_move int_solver::patcher::patch_nbasic_columns() {
-    lia.settings().stats().m_patches++;
-    lp_assert(lia.is_feasible());
-    m_patch_success = 0;
-    m_patch_fail = 0;
-    unsigned num = lra.A_r().column_count();
-    for (unsigned v = 0; v < num; v++) {
-        if (lia.is_base(v))
-            continue;
-        patch_nbasic_column(v);
+    int_solver::patcher::patcher(int_solver& lia):
+        lia(lia),
+        lra(lia.lra),
+        lrac(lia.lrac)
+    {}
+    
+    void int_solver::patcher::remove_fixed_vars_from_base() {
+        unsigned num = lra.A_r().column_count();
+        for (unsigned v = 0; v < num; v++) {
+            if (!lia.is_base(v) || !lia.is_fixed(v))
+                continue;
+            auto const & r = lra.basic2row(v);
+            for (auto const& c : r) {
+                if (c.var() != v && !lia.is_fixed(c.var())) {
+                    lra.pivot(c.var(), v); 
+                    break;
+                }
+            }        
+        }
     }
-//        for (unsigned j : lia.lrac.m_r_nbasis) 
-//        patch_nbasic_column(j);
-    lp_assert(lia.is_feasible());
-    verbose_stream() << "patch " << m_patch_success << " fails " << m_patch_fail << "\n";
-    if (!lia.has_inf_int()) {
-        lia.settings().stats().m_patches_success++;
-        return lia_move::sat;
+
+    lia_move int_solver::patcher::patch_nbasic_columns() {
+        remove_fixed_vars_from_base();
+        lia.settings().stats().m_patches++;
+        lp_assert(lia.is_feasible());
+        m_patch_success = 0;
+        m_patch_fail = 0;
+        m_num_ones = 0;
+        m_num_divides = 0;
+        unsigned num = lra.A_r().column_count();
+        for (unsigned v = 0; v < num; v++) {
+            if (lia.is_base(v))
+                continue;
+            patch_nbasic_column(v);
+        }
+        lp_assert(lia.is_feasible());
+        verbose_stream() << "patch " << m_patch_success << " fails " << m_patch_fail << " ones " << m_num_ones << " divides " << m_num_divides << "\n";
+        //lra.display(verbose_stream());
+        //exit(0);
+        if (!lia.has_inf_int()) {
+            lia.settings().stats().m_patches_success++;
+            return lia_move::sat;
+        }
+        return lia_move::undef;
     }
-    return lia_move::undef;
-}
 
 void int_solver::patcher::patch_nbasic_column(unsigned j) {
     impq & val = lrac.m_r_x[j];
@@ -54,8 +71,24 @@ void int_solver::patcher::patch_nbasic_column(unsigned j) {
     bool m_is_one = m.is_one();
     bool val_is_int = lia.value_is_int(j);
 
+
+    const auto & A = lra.A_r();
+    if (!m_is_one) {
+        verbose_stream() << "divisor: " << m << "\n";
+        lia.display_column(verbose_stream(), j);
+        for (auto c : A.column(j)) {
+            unsigned row_index = c.var();
+            lia.display_row(verbose_stream(), A.m_rows[row_index]);
+            verbose_stream() << "\n";
+        }
+    }
+
     // check whether value of j is already a multiple of m.
     if (val_is_int && (m_is_one || (val.x / m).is_int())) {
+        if (m_is_one)
+            ++m_num_ones;
+        else
+            ++m_num_divides;
         return;
     }
 
@@ -77,13 +110,15 @@ void int_solver::patcher::patch_nbasic_column(unsigned j) {
     }
 #endif
 
+#if 0
     verbose_stream() << "TARGET v" << j << " -> [";
     if (inf_l) verbose_stream() << "-oo"; else verbose_stream() << ceil(l.x);
     verbose_stream() << ", ";
     if (inf_u) verbose_stream() << "oo"; else verbose_stream() << floor(u.x);
     verbose_stream() << "]";
     verbose_stream() << ", m: " << m << ", val: " << val << ", is_int: " << lra.column_is_int(j) << "\n";
-
+#endif
+    
     if (!inf_l) {
         l = impq(m_is_one ? ceil(l) : m * ceil(l / m));
         if (inf_u || l <= u) {
@@ -472,14 +507,11 @@ bool int_solver::at_upper(unsigned j) const {
 }
 
 std::ostream & int_solver::display_row(std::ostream & out, lp::row_strip<rational> const & row) const {
-bool first = true;
+    bool first = true;
     auto & rslv = lrac.m_r_solver;
-for (const auto &c : row)
-    {
-        if (is_fixed(c.var()))
-        {
-            if (!get_value(c.var()).is_zero())
-            {
+    for (const auto &c : row) {
+        if (is_fixed(c.var())) {
+            if (!get_value(c.var()).is_zero()) {
                 impq val = get_value(c.var()) * c.coeff();
                 if (!first && val.is_pos())
                     out << "+";
@@ -498,17 +530,11 @@ for (const auto &c : row)
         }
         else if (c.coeff().is_minus_one())
             out << "-";
-        else
-        {
-            if (c.coeff().is_pos())
-            {
-                if (!first)
-                    out << "+";
-            }
+        else {
+            if (c.coeff().is_pos() && !first)
+                out << "+";
             if (c.coeff().is_big())
-            {
                 out << " b*";
-            }
             else
                 out << c.coeff();
         }
@@ -516,8 +542,7 @@ for (const auto &c : row)
         first = false;
     }
     out << "\n";
-    for (const auto &c : row)
-    {
+    for (const auto &c : row) {
         if (is_fixed(c.var()))
             continue;
         rslv.print_column_info(c.var(), out);
@@ -526,13 +551,12 @@ for (const auto &c : row)
     }
     return out;
 }
+    
 std::ostream& int_solver::display_row_info(std::ostream & out, unsigned row_index) const  {    
     auto & rslv = lrac.m_r_solver;
     auto const& row = rslv.m_A.m_rows[row_index];
     return display_row(out, row);
 }
-
-
 
 bool int_solver::shift_var(unsigned j, unsigned range) {
     if (is_fixed(j) || is_base(j))

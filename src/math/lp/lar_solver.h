@@ -393,27 +393,32 @@ public:
     void clear_inf_set() {
         m_mpq_lar_core_solver.m_r_solver.inf_set().clear();        
     }
+    
     inline void remove_column_from_inf_set(unsigned j) {
         m_mpq_lar_core_solver.m_r_solver.remove_column_from_inf_set(j);
     }
+
+    void pivot(int entering, int leaving) {
+        m_mpq_lar_core_solver.pivot(entering, leaving);
+    }
+    
     template <typename ChangeReport>
     void change_basic_columns_dependend_on_a_given_nb_column_report(unsigned j,
                                                                     const numeric_pair<mpq> & delta,
                                                                     const ChangeReport& after) {
         
-      for (const auto & c : A_r().m_columns[j]) {
-                unsigned bj = m_mpq_lar_core_solver.m_r_basis[c.var()];
-                if (tableau_with_costs()) {
-                    m_basic_columns_with_changed_cost.insert(bj);
-                }
-                m_mpq_lar_core_solver.m_r_solver.add_delta_to_x_and_track_feasibility(bj, - A_r().get_val(c) * delta);
-                after(bj);
-                TRACE("change_x_del",
-                      tout << "changed basis column " << bj << ", it is " <<
-                      ( m_mpq_lar_core_solver.m_r_solver.column_is_feasible(bj)?  "feas":"inf") << std::endl;);
-            }
-   }
-
+        for (const auto & c : A_r().m_columns[j]) {
+            unsigned bj = m_mpq_lar_core_solver.m_r_basis[c.var()];
+            if (tableau_with_costs()) 
+                m_basic_columns_with_changed_cost.insert(bj);
+            m_mpq_lar_core_solver.m_r_solver.add_delta_to_x_and_track_feasibility(bj, - A_r().get_val(c) * delta);
+            after(bj);
+            TRACE("change_x_del",
+                  tout << "changed basis column " << bj << ", it is " <<
+                  ( m_mpq_lar_core_solver.m_r_solver.column_is_feasible(bj)?"feas":"inf") << std::endl;);
+        }
+    }
+    
     template <typename ChangeReport>
     void set_value_for_nbasic_column_report(unsigned j,
                                             const impq & new_val,

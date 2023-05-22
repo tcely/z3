@@ -46,12 +46,15 @@ class int_solver {
         lar_core_solver&    lrac;
         unsigned            m_patch_success = 0;
         unsigned            m_patch_fail = 0;
+        unsigned            m_num_ones = 0;
+        unsigned            m_num_divides = 0;
     public:
         patcher(int_solver& lia);
         bool should_apply() const { return true; }
         lia_move operator()() { return patch_nbasic_columns(); }
         void patch_nbasic_column(unsigned j);
     private:
+        void remove_fixed_vars_from_base();
         lia_move patch_nbasic_columns();
     };
 

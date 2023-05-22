@@ -908,15 +908,20 @@ namespace smt {
         inf_numeral l, u;
         numeral m;
         unsigned num_patched = 0, num_not_patched = 0;
+        unsigned num_one = 0, num_divides = 0;
         for (theory_var v = 0; v < num; v++) {
             if (!is_non_base(v)) 
                 continue;
             get_freedom_interval(v, inf_l, l, inf_u, u, m);
-            if (m.is_one() && get_value(v).is_int())
+            if (m.is_one() && get_value(v).is_int()) {
+                num_one++;
                 continue;
+            }
             // check whether value of v is already a multiple of m.
-            if ((get_value(v).get_rational() / m).is_int())
+            if ((get_value(v).get_rational() / m).is_int()) {
+                num_divides++;
                 continue;
+            }
 
             TRACE("patch_int",
                   tout << "TARGET v" << v << " -> [";
@@ -927,13 +932,14 @@ namespace smt {
                   tout << ", m: " << m << ", val: " << get_value(v) << ", is_int: " << is_int(v) << "\n";);
 
 
+#if 0
             verbose_stream() << "TARGET v" << v << " -> [";
             if (inf_l) verbose_stream() << "-oo"; else verbose_stream() << ceil(l);
             verbose_stream() << ", ";
             if (inf_u) verbose_stream() << "oo"; else verbose_stream() << floor(u);
             verbose_stream() << "]";
             verbose_stream() << ", m: " << m << ", val: " << get_value(v) << ", is_int: " << is_int(v) << "\n";
-
+#endif
             if (!inf_l)
                 l = ceil(l);
             if (!inf_u)
@@ -957,7 +963,9 @@ namespace smt {
                 set_value(v, inf_numeral(0));
         }
         SASSERT(m_to_patch.empty());
-        verbose_stream() << "patched " << num_patched << " not patched " << num_not_patched << "\n";
+        verbose_stream() << "patched " << num_patched << " not patched " << num_not_patched << " ones " << num_one << " divides " << num_divides << "\n";
+        //display(verbose_stream());
+        //exit(0);
     }
 
     /**
