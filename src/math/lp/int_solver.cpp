@@ -49,8 +49,13 @@ namespace lp {
                 continue;
             patch_nbasic_column(v);
         }
+        unsigned num_fixed = 0;
+        for (unsigned v = 0; v < num; v++) 
+            if (lia.is_fixed(v))
+                ++num_fixed;
+            
         lp_assert(lia.is_feasible());
-        verbose_stream() << "patch " << m_patch_success << " fails " << m_patch_fail << " ones " << m_num_ones << " divides " << m_num_divides << "\n";
+        verbose_stream() << "patch " << m_patch_success << " fails " << m_patch_fail << " ones " << m_num_ones << " divides " << m_num_divides << " num fixed " << num_fixed << "\n";
         //lra.display(verbose_stream());
         //exit(0);
         if (!lia.has_inf_int()) {
@@ -72,16 +77,6 @@ void int_solver::patcher::patch_nbasic_column(unsigned j) {
     bool val_is_int = lia.value_is_int(j);
 
 
-    const auto & A = lra.A_r();
-    if (!m_is_one) {
-        verbose_stream() << "divisor: " << m << "\n";
-        lia.display_column(verbose_stream(), j);
-        for (auto c : A.column(j)) {
-            unsigned row_index = c.var();
-            lia.display_row(verbose_stream(), A.m_rows[row_index]);
-            verbose_stream() << "\n";
-        }
-    }
 
     // check whether value of j is already a multiple of m.
     if (val_is_int && (m_is_one || (val.x / m).is_int())) {
@@ -91,6 +86,19 @@ void int_solver::patcher::patch_nbasic_column(unsigned j) {
             ++m_num_divides;
         return;
     }
+
+#if 0
+    const auto & A = lra.A_r();
+    if (!m_is_one) {
+        // lia.display_column(verbose_stream(), j);
+        for (auto c : A.column(j)) {
+            continue;
+            unsigned row_index = c.var();
+            lia.display_row(verbose_stream(), A.m_rows[row_index]);
+            verbose_stream() << "\n";
+        }
+    }
+#endif
 
     TRACE("patch_int",
           tout << "TARGET j" << j << " -> [";
@@ -126,6 +134,7 @@ void int_solver::patcher::patch_nbasic_column(unsigned j) {
             lra.set_value_for_nbasic_column(j, l);
         }
         else {
+            verbose_stream() << "fail: " << j << " " << m << "\n";
             --m_patch_success;
             ++m_patch_fail;
             TRACE("patch_int", tout << "not patching " << l << "\n";);
@@ -354,7 +363,7 @@ static void set_upper(impq & u, bool & inf_u, impq const & v) {
 
 // this function assumes that all basic columns dependend on j are feasible
 bool int_solver::get_freedom_interval_for_column(unsigned j, bool & inf_l, impq & l, bool & inf_u, impq & u, mpq & m) {
-    if (lrac.m_r_heading[j] >= 0) // the basic var
+    if (lrac.m_r_heading[j] >= 0 || is_fixed(j)) // basic or fixed var
         return false;
 
     TRACE("random_update", display_column(tout, j) << ", is_int = " << column_is_int(j) << "\n";);

@@ -908,15 +908,21 @@ namespace smt {
         inf_numeral l, u;
         numeral m;
         unsigned num_patched = 0, num_not_patched = 0;
-        unsigned num_one = 0, num_divides = 0;
+        unsigned num_one = 0, num_divides = 0, num_fixed = 0;
+
+        for (theory_var v = 0; v < num; v++) 
+            if (is_fixed(v))
+                ++num_fixed;
+            
         for (theory_var v = 0; v < num; v++) {
-            if (!is_non_base(v)) 
+            if (!is_non_base(v) || is_fixed(v)) 
                 continue;
             get_freedom_interval(v, inf_l, l, inf_u, u, m);
             if (m.is_one() && get_value(v).is_int()) {
                 num_one++;
                 continue;
             }
+            
             // check whether value of v is already a multiple of m.
             if ((get_value(v).get_rational() / m).is_int()) {
                 num_divides++;
@@ -952,6 +958,7 @@ namespace smt {
             }
             if (!inf_l && !inf_u && l > u) {
                 ++num_not_patched;
+                verbose_stream() << "fail: " << v << " " << m << "\n";
                 continue; // cannot patch
             }
             ++num_patched;
@@ -963,7 +970,7 @@ namespace smt {
                 set_value(v, inf_numeral(0));
         }
         SASSERT(m_to_patch.empty());
-        verbose_stream() << "patched " << num_patched << " not patched " << num_not_patched << " ones " << num_one << " divides " << num_divides << "\n";
+        verbose_stream() << "patched " << num_patched << " not patched " << num_not_patched << " ones " << num_one << " divides " << num_divides << " fixed " << num_fixed << "\n";
         //display(verbose_stream());
         //exit(0);
     }

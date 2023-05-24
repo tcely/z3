@@ -2059,7 +2059,9 @@ namespace smt {
         bool inf_l, inf_u;
         inf_numeral l, u;
         numeral m;
-        get_freedom_interval(v, inf_l, l, inf_u, u, m);
+        if (!get_freedom_interval(v, inf_l, l, inf_u, u, m))
+            return false;
+        
         if (inf_l && inf_u) {
             inf_numeral new_val = inf_numeral(m_random() % (RANGE + 1));
             set_value(v, new_val);

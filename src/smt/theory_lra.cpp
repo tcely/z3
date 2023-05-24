@@ -449,6 +449,29 @@ class theory_lra::imp {
         return v;
     }
 
+    theory_var internalize_mod(app* n) {
+        TRACE("arith", tout << "internalizing...\n" << mk_pp(n, m) << "\n";);
+        rational r(1);
+        theory_var s = mk_binary_op(n);
+        if (!a.is_numeral(n->get_arg(1), r) || r.is_zero())
+            found_underspecified(n);
+        if (!ctx().relevancy())
+            mk_idiv_mod_axioms(n->get_arg(0), n->get_arg(1));
+        return s;
+
+    }
+
+    theory_var mk_binary_op(app * n) {
+        SASSERT(n->get_num_args() == 2);
+        if (ctx().e_internalized(n))
+            return mk_var(n);
+        ctx().internalize(n->get_arg(0), false);
+        ctx().internalize(n->get_arg(1), false);
+        enode* e = mk_enode(n);
+        return mk_var(n);
+    }
+
+
     /**
      * \brief Internalize the given term and return an alias for it.
      *  Return null_theory_var if the term was not implemented by the theory yet.
@@ -472,16 +495,18 @@ class theory_lra::imp {
             return internalize_numeral(n, val);
         else if (a.is_mul(n))
             return internalize_mul1(n);
-        else if (a.is_arith_expr(n))
+        else if (a.is_mod(n))
+            return internalize_mod(n);
+        else if (a.is_idiv(n))
+            return internalize_mod(n);
+        else if (a.is_arith_expr(n)) {
+            verbose_stream() << "nyi " << mk_pp(n, m) << "\n";
             NOT_IMPLEMENTED_YET();
+        }
 #if 0
 
         else if (a.is_div(n))
             return internalize_div(n);
-        else if (a.is_idiv(n))
-            return internalize_idiv(n);
-        else if (a.is_mod(n))
-            return internalize_mod(n);
         else if (a.is_rem(n))
             return internalize_rem(n);
         else if (a.is_to_real(n))
@@ -1919,6 +1944,8 @@ public:
         m_changed_assignment = false;
         ctx().push_trail(value_trail<unsigned>(m_final_check_idx));
         final_check_status result = final_check_core();
+        //display(verbose_stream());
+        //exit(0);
         if (result != FC_DONE)
             return result;
         if (!m_changed_assignment)

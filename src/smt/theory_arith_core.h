@@ -1567,6 +1567,8 @@ namespace smt {
         m_liberal_final_check = true;
         m_changed_assignment  = false;
         final_check_status result = final_check_core();
+        //display(verbose_stream());
+        //exit(0);
         if (result != FC_DONE)
             return result;
         if (!m_changed_assignment)
