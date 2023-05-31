@@ -195,12 +195,6 @@ void tst_const_multiplier(ast_manager& m, bit_blaster & blaster, unsigned sz) {
         expr_ref_vector c(m), out1(m), out2(m);
         for (unsigned j = 0; j < sz; ++j) 
             c.push_back((i & (1ul << j)) ? m.mk_true() : m.mk_false());
-        for (auto xi : x)
-            verbose_stream() << mk_pp(xi, m);
-        verbose_stream() << " ";
-        for (auto ci : c)
-            verbose_stream() << mk_pp(ci, m);
-        verbose_stream() << "\n";
         blaster.mk_const_case1_multiplier(sz, c.data(), x.data(), out1);
         
         blaster.mk_generic_multiplier(sz, c.data(), x.data(), out2);
@@ -211,7 +205,6 @@ void tst_const_multiplier(ast_manager& m, bit_blaster & blaster, unsigned sz) {
         smt::kernel solver(m, fp);
         solver.assert_expr(m.mk_not(fml));
         auto r = solver.check();
-        verbose_stream() << r << "\n";
         VERIFY(r == l_false);
         expr_mark vis1, vis2;
         unsigned sz1 = 0, sz2 = 0;
@@ -272,7 +265,7 @@ void tst_bit_blaster() {
     bit_blaster_params params;
     bit_blaster blaster(m, params);
 
-    tst_const_multiplier(m, blaster, 7);
+    tst_const_multiplier(m, blaster, 8);
     tst_adder(m, blaster);
     tst_multiplier(m, blaster);
     tst_le(m, 4);

@@ -1943,7 +1943,7 @@ public:
 
     final_check_status final_check_eh() {
 
-        verbose_stream() << "final " << ctx().get_scope_level() << " " << ctx().assigned_literals().size() << "\n";
+        //        verbose_stream() << "final " << ctx().get_scope_level() << " " << ctx().assigned_literals().size() << "\n";
         //ctx().display(verbose_stream());
         //exit(0);
         

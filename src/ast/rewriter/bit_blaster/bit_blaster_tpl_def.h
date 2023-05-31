@@ -1169,7 +1169,7 @@ void bit_blaster_tpl<Cfg>::mk_const_case1_multiplier(unsigned sz, expr * const *
         if (!m().is_true(a_bits[i]))
             continue;
 
-        ptr_buffer<expr, 128> one, sbits;
+        ptr_buffer<expr, 128> kbits, ibits;
         expr_ref_vector out_bits1(m());
 
         unsigned k = 0;
@@ -1189,8 +1189,8 @@ void bit_blaster_tpl<Cfg>::mk_const_case1_multiplier(unsigned sz, expr * const *
             // shift by k+1, subtract x
             out_bits.reset();
 
-            mul2_i(k + 1, sbits);
-            mk_adder(sz, out_bits.data(), sbits.data(), out_bits1);
+            mul2_i(k + 1, kbits);
+            mk_adder(sz, out_bits.data(), kbits.data(), out_bits1);
             out_bits.reset();
             out_bits.append(out_bits1);
             out_bits1.reset();
@@ -1201,18 +1201,25 @@ void bit_blaster_tpl<Cfg>::mk_const_case1_multiplier(unsigned sz, expr * const *
             out_bits.append(out_bits1);
             out_bits1.reset();
         }
-        else if (i == k) {
-            mul2_i(i, sbits);
-            mk_adder(sz, out_bits.data(), sbits.data(), out_bits1);
+        else if (i <= k && k <= i + 1) {
+            mul2_i(i, ibits);
+            mk_adder(sz, out_bits.data(), ibits.data(), out_bits1);
             out_bits.reset();
             out_bits.append(out_bits1);
             out_bits1.reset();
+            if (i + 1 == k) {
+                mul2_i(k, kbits);
+                mk_adder(sz, out_bits.data(), kbits.data(), out_bits1);
+                out_bits.reset();
+                out_bits.append(out_bits1);
+                out_bits1.reset();
+            }                
         }
         else if (k == sz - 1) {
             // 2^sz - 2^i = - 2^i
             // -= x*2^i
-            mul2_i(i, sbits);
-            mk_subtracter(sz, out_bits.data(), sbits.data(), out_bits1, cout);
+            mul2_i(i, ibits);
+            mk_subtracter(sz, out_bits.data(), ibits.data(), out_bits1, cout);
             out_bits.reset();
             out_bits.append(out_bits1);
         }
