@@ -51,11 +51,16 @@ class int_solver {
     public:
         patcher(int_solver& lia);
         bool should_apply() const { return true; }
-        lia_move operator()() { return patch_nbasic_columns(); }
+        lia_move operator()() { return patch_basic_columns(); }
         void patch_nbasic_column(unsigned j);
+        bool patch_basic_column(unsigned v, row_cell<mpq> const& c);
+        void patch_basic_column(unsigned j);
+        bool try_patch_column(unsigned j, mpq const& delta);
+        unsigned count_non_int();
     private:
         void remove_fixed_vars_from_base();
         lia_move patch_nbasic_columns();
+        lia_move patch_basic_columns();
     };
 
     lar_solver&         lra;

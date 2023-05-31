@@ -958,7 +958,7 @@ namespace smt {
             }
             if (!inf_l && !inf_u && l > u) {
                 ++num_not_patched;
-                verbose_stream() << "fail: " << v << " " << m << "\n";
+                // verbose_stream() << "fail: " << v << " " << m << "\n";
                 continue; // cannot patch
             }
             ++num_patched;
@@ -968,9 +968,20 @@ namespace smt {
                 set_value(v, u);
             else 
                 set_value(v, inf_numeral(0));
+
+#if 0
+            verbose_stream() << "Patch " << v << "\n";
+            for (auto const& ce : m_columns[v]) {
+                if (ce.is_dead())
+                    continue;
+                row const & r = m_rows[ce.m_row_id];
+                theory_var s = r.get_base_var();
+                display_row(verbose_stream() << s << " " << get_value(s) << " ", r, true);
+            }
+#endif       
         }
         SASSERT(m_to_patch.empty());
-        verbose_stream() << "patched " << num_patched << " not patched " << num_not_patched << " ones " << num_one << " divides " << num_divides << " fixed " << num_fixed << "\n";
+        // verbose_stream() << "patched " << num_patched << " not patched " << num_not_patched << " ones " << num_one << " divides " << num_divides << " fixed " << num_fixed << "\n";
         //display(verbose_stream());
         //exit(0);
     }

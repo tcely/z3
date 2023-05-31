@@ -34,6 +34,7 @@ Notes:
 #include "sat/tactic/sat_tactic.h"
 #include "ast/simplifiers/bound_manager.h"
 #include "tactic/arith/probe_arith.h"
+#include "params/tactic_params.hpp"
 
 struct quasi_pb_probe : public probe {
     result operator()(goal const & g) override {
@@ -181,6 +182,7 @@ static tactic * mk_bounded_tactic(ast_manager & m) {
 tactic * mk_preamble_tactic(ast_manager& m) {
 
     params_ref pull_ite_p;
+    tactic_params tp;
     pull_ite_p.set_bool("pull_cheap_ite", true);
     pull_ite_p.set_bool("push_ite_arith", false);
     pull_ite_p.set_bool("local_ctx", true);
@@ -195,7 +197,7 @@ tactic * mk_preamble_tactic(ast_manager& m) {
         and_then(
             mk_simplify_tactic(m),
             mk_propagate_values_tactic(m),
-            using_params(mk_ctx_simplify_tactic(m), ctx_simp_p),
+            tp.local_ctx() ? using_params(mk_ctx_simplify_tactic(m), ctx_simp_p) : mk_skip_tactic(),
             using_params(mk_simplify_tactic(m), pull_ite_p),
             mk_solve_eqs_tactic(m),
             mk_elim_uncnstr_tactic(m));

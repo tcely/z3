@@ -582,12 +582,14 @@ namespace smt {
                         // If the row contains non integer coefficients, then v may be assigned
                         // to a non-integer value even if all non-base variables are integer.
                         // So, v should not be "eliminated"
-                        break; 
+                        break;
+                    verbose_stream() << "eliminate " << v << "\n";
                     eliminate<false>(v, m_eager_gcd);
                     break;
                 case NON_BASE: {
                     col_entry const * entry = get_row_for_eliminating(v);
                     if (entry) {
+                        verbose_stream() << "moving " << v << "\n";
                         TRACE("move_unconstrained_to_base", tout << "moving v" << v << " to the base\n";);
                         row & r = m_rows[entry->m_row_id];
                         SASSERT(r[entry->m_row_idx].m_var == v);
@@ -2144,7 +2146,7 @@ namespace smt {
         if (candidates.empty())
             return;
 
-        verbose_stream() << "candidates " << candidates.size() << "\n";
+        // verbose_stream() << "candidates " << candidates.size() << "\n";
         m_tmp_var_set.reset();
         m_tmp_var_set2.reset();
         for (theory_var v : candidates) {

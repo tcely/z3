@@ -23,6 +23,10 @@ Revision History:
 #include "ast/rewriter/bit_blaster/bit_blaster.h"
 #include "model/model.h"
 #include "model/model_evaluator.h"
+#include "smt/smt_kernel.h"
+#include "smt/params/smt_params.h"
+#include "ast/for_each_expr.h"
+
 
 void mk_bits(ast_manager & m, char const * prefix, unsigned sz, expr_ref_vector & r) {
     sort_ref b(m);
@@ -184,6 +188,41 @@ void tst_multiplier(ast_manager & m, bit_blaster & blaster) {
     ENSURE_INT(mdl, c, 7); // b111 * b001
 }
 
+void tst_const_multiplier(ast_manager& m, bit_blaster & blaster, unsigned sz) {
+    expr_ref_vector x(m);
+    mk_bits(m, "x", sz, x);
+    for (unsigned i = 0; i < (1ul << sz); ++i) {
+        expr_ref_vector c(m), out1(m), out2(m);
+        for (unsigned j = 0; j < sz; ++j) 
+            c.push_back((i & (1ul << j)) ? m.mk_true() : m.mk_false());
+        for (auto xi : x)
+            verbose_stream() << mk_pp(xi, m);
+        verbose_stream() << " ";
+        for (auto ci : c)
+            verbose_stream() << mk_pp(ci, m);
+        verbose_stream() << "\n";
+        blaster.mk_const_case1_multiplier(sz, c.data(), x.data(), out1);
+        
+        blaster.mk_generic_multiplier(sz, c.data(), x.data(), out2);
+        expr_ref fml(m.mk_true(), m);
+        for (unsigned j = 0; j < sz; ++j)
+            fml = m.mk_and(fml, m.mk_eq(out1.get(j), out2.get(j)));
+        smt_params fp;
+        smt::kernel solver(m, fp);
+        solver.assert_expr(m.mk_not(fml));
+        auto r = solver.check();
+        verbose_stream() << r << "\n";
+        VERIFY(r == l_false);
+        expr_mark vis1, vis2;
+        unsigned sz1 = 0, sz2 = 0;
+        for (auto o : out1)            
+            sz1 += get_num_exprs(o, vis1);
+        for (auto o : out2)            
+            sz2 += get_num_exprs(o, vis2);
+        verbose_stream() << "sizes " << sz1 << " vs " << sz2 << "\n";
+    }
+}
+
 void tst_le(ast_manager & m, unsigned sz) {
 //     expr_ref_vector a(m);
 //     expr_ref_vector b(m);
@@ -233,6 +272,7 @@ void tst_bit_blaster() {
     bit_blaster_params params;
     bit_blaster blaster(m, params);
 
+    tst_const_multiplier(m, blaster, 7);
     tst_adder(m, blaster);
     tst_multiplier(m, blaster);
     tst_le(m, 4);

@@ -183,24 +183,29 @@ void bit_blaster_tpl<Cfg>::mk_multiplier(unsigned sz, expr * const * a_bits, exp
     SASSERT(sz > 0);
     numeral n_a, n_b;
     out_bits.reset();
-    if (is_numeral(sz, a_bits, n_b))
+    if (is_numeral(sz, b_bits, n_b))
         std::swap(a_bits, b_bits);
-    if (is_minus_one(sz, b_bits)) {
-        mk_neg(sz, a_bits, out_bits);
+    if (is_minus_one(sz, a_bits)) {
+        mk_neg(sz, b_bits, out_bits);
         SASSERT(sz == out_bits.size());
-        return;
     }
-    if (is_numeral(sz, a_bits, n_a)) {
+    else if (is_numeral(sz, b_bits, n_a)) {
         n_a *= n_b;
         num2bits(n_a, sz, out_bits);
         SASSERT(sz == out_bits.size());
-        return;
     }
-   
-    if (mk_const_case_multiplier(sz, a_bits, b_bits, out_bits)) {
+    else if (is_numeral(sz, a_bits, n_a)) 
+        mk_const_case1_multiplier(sz, a_bits, b_bits, out_bits);
+    else if (mk_const_case_multiplier(sz, a_bits, b_bits, out_bits)) {
         SASSERT(sz == out_bits.size());
-        return;
     }
+    else 
+        mk_generic_multiplier(sz, a_bits, b_bits, out_bits);
+}
+
+template<typename Cfg>
+void bit_blaster_tpl<Cfg>::mk_generic_multiplier(unsigned sz, expr * const * a_bits, expr * const * b_bits, expr_ref_vector & out_bits) {
+
     out_bits.reset();
 #if 0
     static unsigned counter = 0;
@@ -268,7 +273,6 @@ void bit_blaster_tpl<Cfg>::mk_multiplier(unsigned sz, expr * const * a_bits, exp
             out_bits.push_back(out);
         }
     }
-
 }
 
 
@@ -1114,6 +1118,124 @@ void bit_blaster_tpl<Cfg>::mk_carry_save_adder(unsigned sz, expr * const * a_bit
 }
 
 template<typename Cfg>
+void bit_blaster_tpl<Cfg>::mk_const_case1_multiplier(unsigned sz, expr * const * a_bits, expr * const * b_bits, expr_ref_vector & out_bits) {
+    DEBUG_CODE(for (unsigned i = 0; i < sz; ++i) VERIFY(is_bool_const(a_bits[i])););
+    
+    unsigned num_ones = 0;        
+    for (unsigned i = 0; i < sz; ++i)
+        if (m().is_true(a_bits[i]))
+            ++num_ones;
+
+
+    // for each run-length of ones, add contribution to out_bits.
+    // 
+    // c = 2^i + 2^{i+1} + ... + 2^k
+    // x * c 
+    //
+    // i = k
+    // x * 2^i
+    //
+    // i > 0, k < sz - 1
+    // x * (2^i + 2^{i+1} + ... + 2^k)
+    // x * (2^(k+1) - 2^{i})
+    // 4 + 8 + 16 = 32 - 4 = 30
+
+    // i = 0, k < sz - 1
+    // x * 2^(k+1) - 1
+
+    // i = 0, k = sz - 1
+    // -x
+
+    // i > 0, k = sz - 1
+    // x*2^{sz} - 1 - x*2^{i} + 1
+    // = -x - x*2^i + 1 
+    // 8 + 16 + 32 =
+    // 64 - 1 - 8 + 1
+
+    SASSERT(out_bits.empty());
+    for (unsigned i = 0; i < sz; ++i)
+        out_bits.push_back(m().mk_false());
+    expr_ref cout(m());
+
+    auto mul2_i = [&](unsigned i, ptr_buffer<expr, 128>& sbits) {
+        for (unsigned j = 0; j < sz; ++j)
+            if (j < i)
+                sbits.push_back(m().mk_false());
+            else
+                sbits.push_back(b_bits[j-i]);
+    };
+    
+    for (unsigned i = 0; i < sz; ++i) {
+        if (!m().is_true(a_bits[i]))
+            continue;
+
+        ptr_buffer<expr, 128> one, sbits;
+        expr_ref_vector out_bits1(m());
+
+        unsigned k = 0;
+        for (k = i + 1; k < sz && m().is_true(a_bits[k]); ++k);
+        --k;
+
+        if (i == 0 && k == 0) {
+            for (unsigned i = 0; i < sz; ++i)
+                out_bits[i] = b_bits[i];            
+        }
+        else if (i == 0 && k == sz - 1) {
+            out_bits.reset();
+            mk_neg(sz, b_bits, out_bits);
+        }
+        else if (i == 0) {
+            SASSERT(k < sz - 1);
+            // shift by k+1, subtract x
+            out_bits.reset();
+
+            mul2_i(k + 1, sbits);
+            mk_adder(sz, out_bits.data(), sbits.data(), out_bits1);
+            out_bits.reset();
+            out_bits.append(out_bits1);
+            out_bits1.reset();
+            
+            // subtract x
+            mk_subtracter(sz, out_bits.data(), b_bits, out_bits1, cout);
+            out_bits.reset();
+            out_bits.append(out_bits1);
+            out_bits1.reset();
+        }
+        else if (i == k) {
+            mul2_i(i, sbits);
+            mk_adder(sz, out_bits.data(), sbits.data(), out_bits1);
+            out_bits.reset();
+            out_bits.append(out_bits1);
+            out_bits1.reset();
+        }
+        else if (k == sz - 1) {
+            // 2^sz - 2^i = - 2^i
+            // -= x*2^i
+            mul2_i(i, sbits);
+            mk_subtracter(sz, out_bits.data(), sbits.data(), out_bits1, cout);
+            out_bits.reset();
+            out_bits.append(out_bits1);
+        }
+        else {
+            SASSERT(0 < i && i < k && k < sz - 1);                       
+            // += x*2^{k+1} - x*2^i           
+            mul2_i(i, ibits);
+            mul2_i(k + 1, kbits);
+            mk_adder(sz, kbits.data(), out_bits.data(), out_bits1);
+            out_bits.reset();
+            out_bits.append(out_bits1);
+            out_bits1.reset();
+            mk_subtracter(sz, out_bits.data(), ibits.data(), out_bits1, cout);
+            out_bits.reset();
+            out_bits.append(out_bits1);
+            out_bits1.reset(); 
+        }
+        i = k;
+    }
+}
+
+
+template<typename Cfg>
 bool bit_blaster_tpl<Cfg>::mk_const_case_multiplier(unsigned sz, expr * const * a_bits, expr * const * b_bits, expr_ref_vector & out_bits) {
     unsigned case_size = 1;
     unsigned circuit_size = sz*sz*5;
@@ -1133,10 +1255,11 @@ bool bit_blaster_tpl<Cfg>::mk_const_case_multiplier(unsigned sz, expr * const * 
     na_bits.append(sz, a_bits);
     ptr_buffer<expr, 128> nb_bits;
     nb_bits.append(sz, b_bits);
-    mk_const_case_multiplier(true, 0, sz, na_bits, nb_bits, out_bits); 
+    mk_const_case_multiplier(true, 0, sz, na_bits, nb_bits, out_bits);
     return true;
 }
- 
+
+
 template<typename Cfg>
 void bit_blaster_tpl<Cfg>::mk_const_case_multiplier(bool is_a, unsigned i, unsigned sz, ptr_buffer<expr, 128>& a_bits, ptr_buffer<expr, 128>& b_bits, expr_ref_vector & out_bits) {
     while (is_a && i < sz && is_bool_const(a_bits[i])) ++i;

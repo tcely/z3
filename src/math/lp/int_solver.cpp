@@ -35,6 +35,152 @@ namespace lp {
         }
     }
 
+
+    unsigned int_solver::patcher::count_non_int() {
+        unsigned non_int = 0;
+        for (auto j : lra.r_basis()) 
+            if (lra.column_is_int(j) && !lra.column_value_is_int(j))
+                ++non_int;
+        return non_int;
+    }
+
+    lia_move int_solver::patcher::patch_basic_columns() {
+        remove_fixed_vars_from_base();
+        lia.settings().stats().m_patches++;
+        lp_assert(lia.is_feasible());
+
+        //unsigned non_int_before = count_non_int();
+        unsigned num = lra.A_r().column_count();
+        for (unsigned j : lra.r_basis()) 
+            if (!lra.get_value(j).is_int())
+                patch_basic_column(j);
+        //unsigned non_int_after = count_non_int();
+        // verbose_stream() << non_int_before << " -> " << non_int_after << "\n";
+        if (!lia.has_inf_int()) {
+            lia.settings().stats().m_patches_success++;
+            return lia_move::sat;
+        }
+        return lia_move::undef;
+    }
+
+    /***
+     * v + r + a*j = 0
+     * val(v) is rational
+     * a is rational
+     * val(j) is integer
+     * find min delta > 0 such that frac(a*delta) = frac(val(v)) 
+     * then r + a*(j - delta) is an integer
+     * find min delta > 0 such that frac(a*-delta) = frac(val(v))
+     * then r + a*(j + delta) is an integer
+     * 
+     * Note: frac(a*delta) = frac(frac(a)*delta)
+     * Let x1/x2 = frac(val(v))
+     * let a1/a2 = frac(a)
+     *
+     * x1/x2 = frac(a1*delta/a2)
+     * requires that a2 | x2, otherwise not possible.
+     * 
+     * x2 = a2, 0 < x1 < a2 
+     *  -> x1 = a1*delta mod a2
+     *  -> x1 = a1*delta + a2*gamma
+     * let g, x, y = extended_gcd(a1, a2)
+     * a1*x + a2*y = g
+     * if g does not divide x1 then no solution.
+     * therefore assume g | x1
+     * Set delta = x*x1/g
+     * 
+     * Initial experiment: use bare bones case x1/x2 = a1/a2, x1/x2 = 1 - a1/a2
+     */
+
+    bool int_solver::patcher::patch_basic_column(unsigned v, row_cell<mpq> const& c) {
+        if (v == c.var())
+            return false;
+        if (!lra.column_is_int(c.var())) // could use real to patch integer
+            return false;
+        if (c.coeff().is_int())
+            return false;
+        mpq a = fractional_part(c.coeff());
+        mpq r = fractional_part(lra.get_value(v));
+        SASSERT(0 < a && a < 1);
+        SASSERT(0 < r && r < 1);
+        if (!divides(denominator(a), denominator(r)))
+            return false;
+        // stronger filter for now:
+        if (denominator(a) != denominator(r))
+            return false;
+        if (a == r) {
+            if (try_patch_column(c.var(), mpq(a.is_pos() ? 1 : -1)))
+                return true;
+        }
+        if (a == 1 - r) {
+            if (try_patch_column(c.var(), mpq(a.is_pos() ? -1 : 1)))
+                return true;
+        }
+        rational x, y;
+        rational g = gcd(numerator(a), denominator(a), x, y);
+        // g = numerator(a)*x + denominator(a)*y
+        x = abs(x);
+        if (divides(g, numerator(r))) {
+            auto xs = a.is_pos() ? x : -x;
+            if (try_patch_column(c.var(), xs*(numerator(r)/g)))
+                return true;
+        }
+        if (divides(g, numerator(1 - r))) {
+            auto xs = a.is_pos() ? -x : x;
+            if (try_patch_column(c.var(), xs*(numerator(r)/g)))
+                return true;
+        }
+        return false;
+    }
+
+    bool int_solver::patcher::try_patch_column(unsigned j, mpq const& delta) {
+        const auto & A = lra.A_r();
+        unsigned make_count = 0, break_count = 0;
+        if (delta < 0) {
+            if (lia.has_lower(j) && lia.get_value(j) + impq(delta) < lra.get_lower_bound(j))
+                return false;
+        }
+        else {
+            if (lia.has_upper(j) && lia.get_value(j) + impq(delta) > lra.get_upper_bound(j))
+                return false;
+        }
+        for (auto const& c : A.column(j)) {
+            unsigned row_index = c.var();
+            unsigned i = lrac.m_r_basis[row_index];
+            auto old_val = lia.get_value(i);
+            auto new_val = old_val - impq(c.coeff()*delta);
+            if (lia.has_lower(i) && new_val < lra.get_lower_bound(i))
+                return false;
+            if (lia.has_upper(i) && new_val > lra.get_upper_bound(i))
+                return false;
+            if (old_val.is_int() && !new_val.is_int())
+                break_count++;
+            else if (!old_val.is_int() && new_val.is_int())
+                make_count++;
+        }
+        if (make_count > break_count) {
+#if 0
+            for (auto const& c : A.column(j)) {
+                unsigned row_index = c.var();
+                unsigned i = lrac.m_r_basis[row_index];
+                verbose_stream() << "basis " << i << "\n";
+            }
+            verbose_stream() << j << " delta " << delta << " make " << make_count << " break " << break_count << "\n";
+            lra.display(verbose_stream());
+#endif
+            lra.set_value_for_nbasic_column(j, lia.get_value(j) + impq(delta));
+            return true;
+        }
+        return false;
+    }
+    
+    void int_solver::patcher::patch_basic_column(unsigned v) {
+        SASSERT(!lia.is_fixed(v));
+        for (auto const& c : lra.basic2row(v))
+            if (patch_basic_column(v, c))
+                return;                                       
+    }
+
     lia_move int_solver::patcher::patch_nbasic_columns() {
         remove_fixed_vars_from_base();
         lia.settings().stats().m_patches++;
@@ -43,6 +189,8 @@ namespace lp {
         m_patch_fail = 0;
         m_num_ones = 0;
         m_num_divides = 0;
+        //unsigned non_int_before = count_non_int();
+
         unsigned num = lra.A_r().column_count();
         for (unsigned v = 0; v < num; v++) {
             if (lia.is_base(v))
@@ -55,9 +203,12 @@ namespace lp {
                 ++num_fixed;
             
         lp_assert(lia.is_feasible());
-        verbose_stream() << "patch " << m_patch_success << " fails " << m_patch_fail << " ones " << m_num_ones << " divides " << m_num_divides << " num fixed " << num_fixed << "\n";
+        //verbose_stream() << "patch " << m_patch_success << " fails " << m_patch_fail << " ones " << m_num_ones << " divides " << m_num_divides << " num fixed " << num_fixed << "\n";
         //lra.display(verbose_stream());
         //exit(0);
+        //unsigned non_int_after = count_non_int();
+
+        // verbose_stream() << non_int_before << " -> " << non_int_after << "\n";
         if (!lia.has_inf_int()) {
             lia.settings().stats().m_patches_success++;
             return lia_move::sat;
@@ -76,19 +227,30 @@ void int_solver::patcher::patch_nbasic_column(unsigned j) {
     bool m_is_one = m.is_one();
     bool val_is_int = lia.value_is_int(j);
 
-
-
+    const auto & A = lra.A_r();
     // check whether value of j is already a multiple of m.
     if (val_is_int && (m_is_one || (val.x / m).is_int())) {
         if (m_is_one)
             ++m_num_ones;
         else
             ++m_num_divides;
+#if 0
+        for (auto c : A.column(j)) {
+            unsigned row_index = c.var();
+            unsigned i = lrac.m_r_basis[row_index];
+            if (!lia.get_value(i).is_int() ||
+                (lia.has_lower(i) && lia.get_value(i) < lra.get_lower_bound(i)) ||
+                (lia.has_upper(i) && lia.get_value(i) > lra.get_upper_bound(i))) {
+                verbose_stream() << "skip " << j << " " << m << ": ";
+                lia.display_row(verbose_stream(), A.m_rows[row_index]);
+                verbose_stream() << "\n";                    
+            }
+        }
+#endif
         return;
     }
 
 #if 0
-    const auto & A = lra.A_r();
     if (!m_is_one) {
         // lia.display_column(verbose_stream(), j);
         for (auto c : A.column(j)) {
@@ -120,11 +282,18 @@ void int_solver::patcher::patch_nbasic_column(unsigned j) {
 
 #if 0
     verbose_stream() << "TARGET v" << j << " -> [";
-    if (inf_l) verbose_stream() << "-oo"; else verbose_stream() << ceil(l.x);
+    if (inf_l) verbose_stream() << "-oo"; else verbose_stream() << ceil(l.x) << " " << l << "\n";
     verbose_stream() << ", ";
-    if (inf_u) verbose_stream() << "oo"; else verbose_stream() << floor(u.x);
+    if (inf_u) verbose_stream() << "oo"; else verbose_stream() << floor(u.x) << " " << u << "\n";
     verbose_stream() << "]";
     verbose_stream() << ", m: " << m << ", val: " << val << ", is_int: " << lra.column_is_int(j) << "\n";
+#endif
+
+#if 0
+    if (!inf_l)
+        l = impq(ceil(l));
+    if (!inf_u)
+        u = impq(floor(u));
 #endif
     
     if (!inf_l) {
@@ -134,10 +303,23 @@ void int_solver::patcher::patch_nbasic_column(unsigned j) {
             lra.set_value_for_nbasic_column(j, l);
         }
         else {
-            verbose_stream() << "fail: " << j << " " << m << "\n";
-            --m_patch_success;
+            //verbose_stream() << "fail: " << j << " " << m << "\n";
             ++m_patch_fail;
             TRACE("patch_int", tout << "not patching " << l << "\n";);
+#if 0
+            verbose_stream() << "not patched\n";
+            for (auto c : A.column(j)) {
+                unsigned row_index = c.var();
+                unsigned i = lrac.m_r_basis[row_index];
+                if (!lia.get_value(i).is_int() ||
+                    (lia.has_lower(i) && lia.get_value(i) < lra.get_lower_bound(i)) ||
+                    (lia.has_upper(i) && lia.get_value(i) > lra.get_upper_bound(i))) {
+                    lia.display_row(verbose_stream(), A.m_rows[row_index]);
+                    verbose_stream() << "\n";                    
+                }
+            }
+#endif
+            return;
         }
     }
     else if (!inf_u) {
@@ -150,6 +332,20 @@ void int_solver::patcher::patch_nbasic_column(unsigned j) {
         TRACE("patch_int", tout << "patching with 0\n";);
     }
     ++m_patch_success;
+#if 0
+    verbose_stream() << "patched " << j << "\n";
+    for (auto c : A.column(j)) {
+        unsigned row_index = c.var();
+        unsigned i = lrac.m_r_basis[row_index];
+        if (!lia.get_value(i).is_int() ||
+            (lia.has_lower(i) && lia.get_value(i) < lra.get_lower_bound(i)) ||
+            (lia.has_upper(i) && lia.get_value(i) > lra.get_upper_bound(i))) {
+            lia.display_row(verbose_stream(), A.m_rows[row_index]);
+            verbose_stream() << "\n";                    
+        }
+    }
+#endif
+    
 }
 
 int_solver::int_solver(lar_solver& lar_slv) :
@@ -398,10 +594,9 @@ bool int_solver::get_freedom_interval_for_column(unsigned j, bool & inf_l, impq 
         unsigned i = lrac.m_r_basis[row_index];
         impq const & xi = get_value(i);
         lp_assert(lrac.m_r_solver.column_is_feasible(i));
-        if (column_is_int(i) && !a.is_int())
+        if (column_is_int(i) && !a.is_int() && xi.is_int()) 
             m = lcm(m, denominator(a));
-
-
+        
         if (!inf_l && !inf_u) {
             if (l == u) 
                 continue;            
@@ -409,15 +604,15 @@ bool int_solver::get_freedom_interval_for_column(unsigned j, bool & inf_l, impq 
 
         if (a.is_neg()) {
             if (has_lower(i)) 
-                set_lower(l, inf_l, delta(a, xi, lrac.m_r_lower_bounds()[i]));
+                set_lower(l, inf_l, delta(a, xi, lra.get_lower_bound(i)));
             if (has_upper(i)) 
-                set_upper(u, inf_u, delta(a, xi, lrac.m_r_upper_bounds()[i]));
+                set_upper(u, inf_u, delta(a, xi, lra.get_upper_bound(i)));
         }
         else {
             if (has_upper(i)) 
-                set_lower(l, inf_l, delta(a, xi, lrac.m_r_upper_bounds()[i]));
+                set_lower(l, inf_l, delta(a, xi, lra.get_upper_bound(i)));
             if (has_lower(i)) 
-                set_upper(u, inf_u, delta(a, xi, lrac.m_r_lower_bounds()[i]));
+                set_upper(u, inf_u, delta(a, xi, lra.get_lower_bound(i)));
         }
     }
 
@@ -575,7 +770,8 @@ bool int_solver::shift_var(unsigned j, unsigned range) {
     bool inf_l = false, inf_u = false;
     impq l, u;
     mpq m;
-    VERIFY(get_freedom_interval_for_column(j, inf_l, l, inf_u, u, m) || settings().get_cancel_flag());
+    if (!get_freedom_interval_for_column(j, inf_l, l, inf_u, u, m))
+        return false;
     if (settings().get_cancel_flag())
         return false;
     const impq & x = get_value(j);

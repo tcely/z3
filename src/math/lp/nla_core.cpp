@@ -1373,7 +1373,7 @@ void core::patch_monomial(lpvar j) {
     // handle perfect squares
     if ((*m_patched_monic).vars().size() == 2 && (*m_patched_monic).vars()[0] == (*m_patched_monic).vars()[1]) {        
         rational root;
-        if (v.is_perfect_square(root)) {
+        if (v.get_num_bits() <= 1024 && v.is_perfect_square(root)) {
             m_patched_var = (*m_patched_monic).vars()[0];
             if (!var_breaks_correct_monic(m_patched_var) && (try_to_patch(root) || try_to_patch(-root))) { 
                 TRACE("nla_solver", tout << "patched square\n";);
@@ -1420,11 +1420,12 @@ void core::patch_monomials_on_to_refine() {
 }
 
 void core::patch_monomials() {
-    m_cautious_patching = true;
-    patch_monomials_on_to_refine();
     if (m_to_refine.size() == 0 || !m_nla_settings.expensive_patching) {
         return;
     }
+    m_cautious_patching = true;
+    patch_monomials_on_to_refine();
+
     NOT_IMPLEMENTED_YET();
     m_cautious_patching = false; 
     patch_monomials_on_to_refine();

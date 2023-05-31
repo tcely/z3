@@ -1466,6 +1466,7 @@ namespace smt {
 
     template<typename Ext>
     void theory_arith<Ext>::restart_eh() {
+        return;
         m_arith_eq_adapter.restart_eh();
     }
 
@@ -1556,6 +1557,11 @@ namespace smt {
 
     template<typename Ext>
     final_check_status theory_arith<Ext>::final_check_eh() {
+ 
+        // verbose_stream() << "final " << ctx.get_scope_level() << " " << ctx.assigned_literals().size() << "\n";
+        //     ctx.display(verbose_stream());
+        // exit(0);
+               
         TRACE("arith_eq_adapter_info", m_arith_eq_adapter.display_already_processed(tout););
         TRACE("arith", display(tout););
 

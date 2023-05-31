@@ -458,8 +458,18 @@ class theory_lra::imp {
         if (!ctx().relevancy())
             mk_idiv_mod_axioms(n->get_arg(0), n->get_arg(1));
         return s;
-
     }
+
+    theory_var internalize_div(app * n) {
+        rational r(1);
+        theory_var s      = mk_binary_op(n);
+        if (!a.is_numeral(n->get_arg(1), r) || r.is_zero())
+            found_underspecified(n);
+        if (!ctx().relevancy())
+            mk_div_axiom(n->get_arg(0), n->get_arg(1));
+        return s;
+    }
+
 
     theory_var mk_binary_op(app * n) {
         SASSERT(n->get_num_args() == 2);
@@ -499,24 +509,23 @@ class theory_lra::imp {
             return internalize_mod(n);
         else if (a.is_idiv(n))
             return internalize_mod(n);
+        else if (a.is_div(n))
+            return internalize_div(n);
+        else if (a.get_family_id() == n->get_family_id()) {
+            if (!a.is_div0(n) && !a.is_mod0(n) && !a.is_idiv0(n) && !a.is_rem0(n))
+                found_unsupported(n);
+            if (ctx().e_internalized(n))
+                return mk_var(n);
+            for (expr* arg : *n)
+                ctx().internalize(arg, false);
+            mk_enode(n);
+            return mk_var(n);
+        }
         else if (a.is_arith_expr(n)) {
             verbose_stream() << "nyi " << mk_pp(n, m) << "\n";
             NOT_IMPLEMENTED_YET();
         }
 #if 0
-
-        else if (a.is_div(n))
-            return internalize_div(n);
-        else if (a.is_rem(n))
-            return internalize_rem(n);
-        else if (a.is_to_real(n))
-            return internalize_to_real(n);
-        else if (a.is_to_int(n))
-            return internalize_to_int(n);
-
-        else if (a.is_sub(n))
-            return internalize_sub(n);
-        if (a.is_power(n)) {
             // unsupported
             found_unsupported_op(n);
             return mk_binary_op(n);
@@ -527,14 +536,6 @@ class theory_lra::imp {
             enode* e = mk_enode(n);
             return mk_var(e);
         }
-        if (a.get_family_id() == n->get_family_id()) {
-            if (!a.is_div0(n) && !a.is_mod0(n) && !a.is_idiv0(n) && !a.is_rem0(n))
-                found_unsupported_op(n);
-            if (ctx().e_internalized(n))
-                return expr2var(n);
-            for (expr* arg : *n)
-                ctx().internalize(arg, false);
-            return mk_var(mk_enode(n));
     }
 
 #endif
@@ -1097,7 +1098,6 @@ class theory_lra::imp {
                     return v;
                 }
                 if (!st.offset().is_zero()) {
-                    verbose_stream() << "Offset row " << st.offset() << "\n";
                     m_left_side.push_back({ st.offset(), get_one(a.is_int(term)) });
                 }
                 
@@ -1255,13 +1255,21 @@ public:
     }
         
     void internalize_eq_eh(app * atom, bool_var) {
+        return;
+        if (!ctx().get_fparams().m_arith_eager_eq_axioms)
+            return;
         expr* lhs = nullptr, *rhs = nullptr;
         VERIFY(m.is_eq(atom, lhs, rhs));
         enode * n1 = get_enode(lhs);
         enode * n2 = get_enode(rhs);
-        TRACE("arith_verbose", tout << mk_pp(atom, m) << " " << is_arith(n1) << " " << is_arith(n2) << "\n";);
-        if (is_arith(n1) && is_arith(n2) && n1 != n2) 
+        if (is_arith(n1) && is_arith(n2) &&
+            n1->get_th_var(get_id()) != null_theory_var &&
+            n2->get_th_var(get_id()) != null_theory_var && n1 != n2) {
+            verbose_stream() << "ineq\n";
             m_arith_eq_adapter.mk_axioms(n1, n2);
+        }
+        else
+            verbose_stream() << "skip\n";
     }
 
     void assign_eh(bool_var v, bool is_true) {
@@ -1353,6 +1361,7 @@ public:
     }
 
     void restart_eh() {
+        return;
         m_arith_eq_adapter.restart_eh();
     }
 
@@ -1778,7 +1787,7 @@ public:
                       tout << "v" << v << " ";
               tout << "\n"; );
         if (!vars.empty()) {
-            verbose_stream() << "random update " << vars.size() << "\n";
+            // verbose_stream() << "random update " << vars.size() << "\n";
             lp().random_update(vars.size(), vars.data());
             m_changed_assignment = true;
         }
@@ -1933,6 +1942,11 @@ public:
     bool m_changed_assignment = false;
 
     final_check_status final_check_eh() {
+
+        verbose_stream() << "final " << ctx().get_scope_level() << " " << ctx().assigned_literals().size() << "\n";
+        //ctx().display(verbose_stream());
+        //exit(0);
+        
         TRACE("arith_eq_adapter_info", m_arith_eq_adapter.display_already_processed(tout););
         TRACE("arith", display(tout););
 
@@ -2525,6 +2539,7 @@ public:
             m_bv_to_propagate.reset();
             return true;
         }
+        
 
         lbool lbl = make_feasible();
         if (!m.inc())
@@ -2629,9 +2644,7 @@ public:
                 continue;
             TRACE("arith", tout << lit << " bound: " << *b << " first: " << first << "\n";);
             ctx().display_literal_verbose(verbose_stream() << "miss ", lit) << "\n";
-            display(verbose_stream());
             TRACE("arith", ctx().display_literal_verbose(tout << "miss ", lit) << "\n");
-            exit(0);
             
             ++count;
         }
@@ -3562,6 +3575,7 @@ public:
         TRACE("arith", tout << "status treated as inconclusive: " << status << "\n";);
             // TENTATIVE_UNBOUNDED, UNBOUNDED, TENTATIVE_DUAL_UNBOUNDED, DUAL_UNBOUNDED, 
             // TIME_EXAUSTED, EMPTY, UNSTABLE
+        
         return l_undef;
     }
  

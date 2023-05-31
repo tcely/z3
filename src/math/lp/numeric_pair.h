@@ -269,11 +269,11 @@ numeric_pair<T> operator*(const numeric_pair<T> & r, const X & a) {
     return numeric_pair<T>(a * r.x, a * r.y);
 }
 
-
 template <typename T, typename X>
 numeric_pair<T> operator/(const numeric_pair<T> & r, const X & a) {
     return numeric_pair<T>(r.x / a,  r.y / a);
 }
+
 
 template <typename T> double get_double(const lp::numeric_pair<T> & ) { /* UNREACHABLE(); */ return 0;}
 template <typename T>
