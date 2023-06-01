@@ -172,7 +172,7 @@ namespace euf {
         IF_VERBOSE(0, verbose_stream() << mk_pp(f, m) << " not handled\n");
     }
 
-    void solver::init_search() {        
+    void solver::init_search() {
         TRACE("before_search", s().display(tout););
         m_reason_unknown.clear();
         for (auto* s : m_solvers)

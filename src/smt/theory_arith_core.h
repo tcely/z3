@@ -1466,7 +1466,6 @@ namespace smt {
 
     template<typename Ext>
     void theory_arith<Ext>::restart_eh() {
-        return;
         m_arith_eq_adapter.restart_eh();
     }
 

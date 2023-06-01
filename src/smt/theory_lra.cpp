@@ -1304,17 +1304,60 @@ public:
         TRACE("arith", tout << "eq " << v1 << " == " << v2 << "\n";);
         if (!is_int(v1) && !is_real(v1)) 
             return;
-        m_arith_eq_adapter.new_eq_eh(v1, v2);
+
+        if (true) {
+            enode* n1 = get_enode(v1);
+            enode* n2 = get_enode(v2);
+            lpvar w1 = register_theory_var_in_lar_solver(v1);
+            lpvar w2 = register_theory_var_in_lar_solver(v2);
+            auto cs = lp().add_equality(w1, w2);            
+            add_eq_constraint(cs.first, n1, n2);
+            add_eq_constraint(cs.second, n1, n2);
+        }
+        else {        
+            m_arith_eq_adapter.new_eq_eh(v1, v2);
+        }
     }
 
     bool use_diseqs() const {
         return true;
     }
 
+    svector<std::pair<theory_var, theory_var>> m_diseqs;
+    unsigned m_diseqs_qhead = 0;
+
     void new_diseq_eh(theory_var v1, theory_var v2) {
         TRACE("arith", tout << "v" << v1 << " != " << "v" << v2 << "\n";);
         ++m_stats.m_assert_diseq;
-        m_arith_eq_adapter.new_diseq_eh(v1, v2);
+        if (false) {
+            if (is_eq(v1, v2)) {
+                m_arith_eq_adapter.new_diseq_eh(v1, v2);
+            }
+            else {
+                m_diseqs.push_back({v1, v2});
+                ctx().push_trail(push_back_vector(m_diseqs));
+            }
+        }
+        else 
+            m_arith_eq_adapter.new_diseq_eh(v1, v2);
+    }
+
+    bool delayed_diseqs() {
+        if (m_diseqs_qhead == m_diseqs.size())
+            return false;
+        verbose_stream() << m_diseqs_qhead << " out of " << m_diseqs.size() << "\n";
+        ctx().push_trail(value_trail(m_diseqs_qhead));
+        bool has_eq = false;
+        while (m_diseqs_qhead < m_diseqs.size()) {
+            auto [v1,v2] = m_diseqs[m_diseqs_qhead];
+            if (is_eq(v1, v2)) {
+                verbose_stream() << "bad diseq " << m_diseqs_qhead << "\n";
+                m_arith_eq_adapter.new_diseq_eh(v1, v2);
+                has_eq = true;
+            }
+            ++m_diseqs_qhead;
+        }
+        return has_eq;
     }
 
     void apply_sort_cnstr(enode* n, sort*) {
@@ -1361,7 +1404,6 @@ public:
     }
 
     void restart_eh() {
-        return;
         m_arith_eq_adapter.restart_eh();
     }
 
@@ -1800,6 +1842,10 @@ public:
         TRACE("arith", display(tout););
         random_update();
         m_model_eqs.reset();
+
+        if (delayed_diseqs())
+            return true;
+        
                         
         theory_var sz = static_cast<theory_var>(th.get_num_vars());            
         unsigned old_sz = m_assume_eq_candidates.size();
@@ -1943,7 +1989,7 @@ public:
 
     final_check_status final_check_eh() {
 
-        //        verbose_stream() << "final " << ctx().get_scope_level() << " " << ctx().assigned_literals().size() << "\n";
+        // verbose_stream() << "final " << ctx().get_scope_level() << " " << ctx().assigned_literals().size() << "\n";
         //ctx().display(verbose_stream());
         //exit(0);
         

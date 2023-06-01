@@ -45,10 +45,15 @@ namespace q {
         quantifier* q = to_quantifier(e);
 
         if (l.sign() == is_forall(e)) {
+            if (m_quantifiers_are_positive && is_forall(e))
+                return;
             sat::literal lit = skolemize(q);
             add_clause(~l, lit);
             return;
         }
+        if (m_quantifiers_are_positive && is_exists(e))
+            return;
+
         quantifier* q_flat = nullptr;
         if (!m_flat.find(q, q_flat)) {
             if (expand(q)) {
@@ -141,10 +146,37 @@ namespace q {
         return mk_literal(body);
     }
 
+    class insert_skolem : public trail {
+        obj_map<quantifier, expr_ref_vector*>& sk;
+        quantifier* q;
+    public:
+        insert_skolem(obj_map<quantifier, expr_ref_vector*>& sk, quantifier* q):
+            sk(sk),
+            q(q)
+        {}
+        void undo() override {
+            dealloc(sk[q]);
+            sk.remove(q);
+        }
+    };
+
     sat::literal solver::skolemize(quantifier* q) {
+        expr_ref_vector* sk = nullptr;
         std::function<expr* (quantifier*, unsigned)> mk_var = [&](quantifier* q, unsigned i) {
-            return m.mk_fresh_const(q->get_decl_name(i), q->get_decl_sort(i));
+            expr * t = nullptr;
+            if (sk->size() <= i) {
+                t = m.mk_fresh_const(q->get_decl_name(i), q->get_decl_sort(i));
+                sk->push_back(t);
+            }
+            else
+                t = sk->get(i);                
+            return t;
         };
+        if (!m_skolems.find(q, sk)) {
+            sk = alloc(expr_ref_vector, m);
+            m_skolems.insert(q, sk);
+            ctx.push(insert_skolem(m_skolems, q));
+        }
         return instantiate(q, is_forall(q), mk_var);
     }
 

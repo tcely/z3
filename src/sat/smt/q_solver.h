@@ -68,6 +68,8 @@ namespace q {
         obj_map<sort, expr*>   m_unit_table;
         expr_ref_vector        m_expanded;
         der_rewriter           m_der;
+        bool                   m_quantifiers_are_positive = false;
+        obj_map<quantifier, expr_ref_vector*> m_skolems;
 
         sat::literal instantiate(quantifier* q, bool negate, std::function<expr* (quantifier*, unsigned)>& mk_var);
         sat::literal skolemize(quantifier* q);
