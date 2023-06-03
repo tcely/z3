@@ -224,7 +224,7 @@ struct goal2sat::imp : public sat::sat_internalizer {
         return v;
     }
 
-    unsigned m_num_scopes{ 0 };
+    unsigned m_num_scopes = 0;
 
     void force_push() {
         for (; m_num_scopes > 0; --m_num_scopes) {
@@ -785,6 +785,7 @@ struct goal2sat::imp : public sat::sat_internalizer {
     };
 
     void process(expr* n, bool is_root) {
+
         TRACE("goal2sat", tout << "process-begin " << mk_bounded_pp(n, m, 2) 
             << " root: " << is_root 
             << " result-stack: " << m_result_stack.size() 
@@ -840,6 +841,9 @@ struct goal2sat::imp : public sat::sat_internalizer {
     }
 
     sat::literal internalize(expr* n) override {
+        auto* ext = dynamic_cast<euf::solver*>(m_solver.get_extension());
+        if (ext)
+            ext->add_polarities(n);
         bool is_not = m.is_not(n, n);
         flet<bool> _top(m_top_level, false);
         unsigned sz = m_result_stack.size();
@@ -889,6 +893,10 @@ struct goal2sat::imp : public sat::sat_internalizer {
     }
     
     void process(expr * n) {
+        auto* ext = dynamic_cast<euf::solver*>(m_solver.get_extension());
+        if (ext)
+            ext->add_polarities(n);
+
         flet<bool> _top(m_top_level, true);
         VERIFY(m_result_stack.empty());
         TRACE("goal2sat", tout << "assert: " << mk_bounded_pp(n, m, 3) << "\n";);

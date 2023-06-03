@@ -25,6 +25,7 @@ z3_add_component(ast
     expr_abstract.cpp
     expr_functors.cpp
     expr_map.cpp
+    expr_polarities.cpp
     expr_stat.cpp
     expr_substitution.cpp
     for_each_ast.cpp

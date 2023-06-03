@@ -59,12 +59,9 @@ namespace smt {
         m_relevancy_propagator(mk_relevancy_propagator(*this)),
         m_user_propagator(nullptr),
         m_random(p.m_random_seed),
-        m_flushing(false),
-        m_lemma_id(0),
-        m_progress_callback(nullptr),
-        m_next_progress_sample(0),
         m_clause_proof(*this),
         m_fingerprints(m, m_region),
+        m_polarities(m),
         m_b_internalized_stack(m),
         m_e_internalized_stack(m),
         m_l_internalized_stack(m),
@@ -2975,6 +2972,7 @@ namespace smt {
             // logical context became inconsistent during user PUSH
             VERIFY(!resolve_conflict()); // build the proof
         }
+        m_polarities.push();
         push_scope();
         m_base_scopes.push_back(base_scope());
         base_scope & bs = m_base_scopes.back();
@@ -2988,9 +2986,11 @@ namespace smt {
 
     void context::pop(unsigned num_scopes) {
         SASSERT (num_scopes > 0);
-        if (num_scopes > m_scope_lvl) return;
+        if (num_scopes > m_scope_lvl)
+            return;
         pop_to_base_lvl();
         pop_scope(num_scopes);
+        m_polarities.pop(num_scopes);
     }
 
     /**

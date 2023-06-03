@@ -48,6 +48,7 @@ namespace euf {
         m_unhandled_functions(m),
         m_to_m(&m),
         m_to_si(&si),
+        m_polarities(m),
         m_clause_visitor(m),
         m_smt_proof_checker(m, p),
         m_clause(m),       
@@ -642,10 +643,13 @@ namespace euf {
             e->push();
         m_egraph.push();
         m_relevancy.push();
+        m_polarities.push();
+        
     }
 
     void solver::pop(unsigned n) {
         start_reinit(n);
+        m_polarities.pop(n);
         m_trail.pop_scope(n);
         for (auto* e : m_solvers)
             e->pop(n);

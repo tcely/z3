@@ -1379,6 +1379,18 @@ namespace smt {
         TRACE("arith_verbose", tout << "p" << v << " := " << (is_true?"true":"false") << "\n";);
         atom * a = get_bv2a(v);
         if (!a) return;
+
+#if 0
+        expr* f = ctx.bool_var2expr(v);        
+        if (ctx.is_positive(f) || ctx.is_negative(f)) {
+            if (is_true && !ctx.is_positive(f)) {
+                return;
+            }
+            if (!is_true && !ctx.is_negative(f)) {
+                return;
+            }
+        }
+#endif
         SASSERT(ctx.get_assignment(a->get_bool_var()) != l_undef);
         SASSERT((ctx.get_assignment(a->get_bool_var()) == l_true) == is_true);
         a->assign_eh(is_true, get_epsilon(a->get_var()));
@@ -1491,10 +1503,6 @@ namespace smt {
         final_check_status result = FC_DONE;
         final_check_status ok;
 
-        //display(verbose_stream());
-        //exit(0);
-
-
         if (false)
         {
             verbose_stream() << "final\n";
@@ -1514,6 +1522,7 @@ namespace smt {
             switch (m_final_check_idx) {
             case 0:
                 ok = check_int_feasibility();
+                if (ok != FC_DONE) verbose_stream() << "int-feas\n";
                 TRACE("arith", tout << "check_int_feasibility(), ok: " << ok << "\n";);
                 break;
             case 1:
@@ -1521,6 +1530,7 @@ namespace smt {
                     ok = FC_CONTINUE;
                 else
                     ok = FC_DONE;
+                if (ok != FC_DONE) verbose_stream() << "assume-eqs\n";
                 TRACE("arith", tout << "assume_eqs(), ok: " << ok << "\n";);
                 break;
             default:
@@ -1557,7 +1567,7 @@ namespace smt {
     template<typename Ext>
     final_check_status theory_arith<Ext>::final_check_eh() {
  
-        // verbose_stream() << "final " << ctx.get_scope_level() << " " << ctx.assigned_literals().size() << "\n";
+        verbose_stream() << "final " << ctx.get_scope_level() << " " << ctx.assigned_literals().size() << "\n";
         //     ctx.display(verbose_stream());
         // exit(0);
                
@@ -1566,14 +1576,14 @@ namespace smt {
 
         if (!propagate_core())
             return FC_CONTINUE;
-        if (delayed_assume_eqs())
+        if (delayed_assume_eqs()) {
+            verbose_stream() << "delayed-eqs\n";
             return FC_CONTINUE;
+        }
         ctx.push_trail(value_trail<unsigned>(m_final_check_idx));
         m_liberal_final_check = true;
         m_changed_assignment  = false;
         final_check_status result = final_check_core();
-        //display(verbose_stream());
-        //exit(0);
         if (result != FC_DONE)
             return result;
         if (!m_changed_assignment)

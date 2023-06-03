@@ -34,6 +34,10 @@ Notes:
 
 namespace euf {
 
+    void solver::add_polarities(expr* f) {
+        m_polarities.add(f);
+    }
+
     void solver::internalize(expr* e) {
         if (get_enode(e))
             return;

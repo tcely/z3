@@ -51,7 +51,7 @@ class int_solver {
     public:
         patcher(int_solver& lia);
         bool should_apply() const { return true; }
-        lia_move operator()() { return patch_basic_columns(); }
+        lia_move operator()() { return patch_nbasic_columns(); }
         void patch_nbasic_column(unsigned j);
         bool patch_basic_column(unsigned v, row_cell<mpq> const& c);
         void patch_basic_column(unsigned j);

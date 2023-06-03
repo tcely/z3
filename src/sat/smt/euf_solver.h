@@ -20,6 +20,7 @@ Author:
 #include "util/trail.h"
 #include "ast/ast_translation.h"
 #include "ast/ast_util.h"
+#include "ast/expr_polarities.h"
 #include "ast/euf/euf_egraph.h"
 #include "ast/rewriter/th_rewriter.h"
 #include "ast/converters/model_converter.h"
@@ -152,6 +153,7 @@ namespace euf {
         svector<scope>                   m_scopes;
         scoped_ptr_vector<th_solver>     m_solvers;
         ptr_vector<th_solver>            m_id2solver;
+        expr_polarities                  m_polarities;
 
         constraint* m_conflict = nullptr;
         constraint* m_eq = nullptr;
@@ -451,6 +453,9 @@ namespace euf {
         bool to_formulas(std::function<expr_ref(sat::literal)>& l2e, expr_ref_vector& fmls) override;
 
         // internalize
+        void add_polarities(expr* f);
+        bool is_neg(expr* e) const { return m_polarities.has_negative(e); }
+        bool is_pos(expr* e) const { return m_polarities.has_positive(e); }
         sat::literal internalize(expr* e, bool sign, bool root) override;
         void internalize(expr* e) override;
         sat::literal mk_literal(expr* e);

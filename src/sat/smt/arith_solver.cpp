@@ -46,9 +46,17 @@ namespace arith {
         del_bounds(0);
     }
 
-    void solver::asserted(literal l) {
+    void solver::asserted(literal lit) {
         force_push();
-        m_asserted.push_back(l);
+        expr* e = ctx.bool_var2expr(lit.var());
+        if (lit.sign() && !ctx.is_neg(e)) {
+            //verbose_stream() << "not negative " << mk_pp(e, m) << "\n";
+        }
+        else if (!lit.sign() && !ctx.is_pos(e)) {
+            //verbose_stream() << "not positive " << mk_pp(e, m) << "\n";
+        }
+        else 
+            m_asserted.push_back(lit);
     }
 
     euf::th_solver* solver::clone(euf::solver& dst_ctx) {

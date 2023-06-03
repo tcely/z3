@@ -392,6 +392,8 @@ namespace smt {
         if (m.is_true(n) || m.is_false(n))
             return;
 
+        m_polarities.add(n);
+
         if (m.is_not(n) && gate_ctx) {
             // a boolean variable does not need to be created if n a NOT gate is in
             // the context of a gate.

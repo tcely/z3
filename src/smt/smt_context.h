@@ -19,6 +19,7 @@ Revision History:
 #pragma once
 
 #include "ast/quantifier_stat.h"
+#include "ast/expr_polarities.h"
 #include "smt/smt_clause.h"
 #include "smt/smt_setup.h"
 #include "smt/smt_enode.h"
@@ -92,13 +93,14 @@ namespace smt {
         scoped_ptr<relevancy_propagator> m_relevancy_propagator;
         theory_user_propagator*          m_user_propagator;
         random_gen                  m_random;
-        bool                        m_flushing; // (debug support) true when flushing
-        mutable unsigned            m_lemma_id;
-        progress_callback *         m_progress_callback;
-        unsigned                    m_next_progress_sample;
+        bool                        m_flushing = false; // (debug support) true when flushing
+        mutable unsigned            m_lemma_id = 0;
+        progress_callback *         m_progress_callback = nullptr;
+        unsigned                    m_next_progress_sample = 0;
         clause_proof                m_clause_proof;
         region                      m_region;
         fingerprint_set             m_fingerprints;
+        expr_polarities             m_polarities;
 
         expr_ref_vector             m_b_internalized_stack; // stack of the boolean expressions already internalized.
         // Remark: boolean expressions can also be internalized as
@@ -1550,6 +1552,7 @@ namespace smt {
         // -----------------------------------
         void assert_expr_core(expr * e, proof * pr);
 
+
         // copy plugins into a fresh context.
         void copy_plugins(context& src, context& dst);
 
@@ -1625,6 +1628,9 @@ namespace smt {
         void assert_expr(expr * e);
 
         void assert_expr(expr * e, proof * pr);
+
+        bool is_positive(expr* e) const { return m_polarities.has_positive(e); }
+        bool is_negative(expr* e) const { return m_polarities.has_negative(e); }
 
         void internalize_assertions();
 

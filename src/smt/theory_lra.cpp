@@ -1255,7 +1255,6 @@ public:
     }
         
     void internalize_eq_eh(app * atom, bool_var) {
-        return;
         if (!ctx().get_fparams().m_arith_eager_eq_axioms)
             return;
         expr* lhs = nullptr, *rhs = nullptr;
@@ -1265,15 +1264,26 @@ public:
         if (is_arith(n1) && is_arith(n2) &&
             n1->get_th_var(get_id()) != null_theory_var &&
             n2->get_th_var(get_id()) != null_theory_var && n1 != n2) {
-            verbose_stream() << "ineq\n";
+            //            verbose_stream() << "ineq\n";
             m_arith_eq_adapter.mk_axioms(n1, n2);
         }
-        else
-            verbose_stream() << "skip\n";
+        //        else
+        //    verbose_stream() << "skip\n";
     }
 
     void assign_eh(bool_var v, bool is_true) {
         TRACE("arith", tout << mk_bounded_pp(ctx().bool_var2expr(v), m) << " " << (literal(v, !is_true)) << "\n";);
+#if 0
+        expr* f = ctx().bool_var2expr(v);
+        if (ctx().is_positive(f) || ctx().is_negative(f)) {
+            if (is_true && !ctx().is_positive(f)) {
+                return;
+            }
+            if (!is_true && !ctx().is_negative(f)) {
+                return;
+            }
+        }
+#endif
         m_asserted_atoms.push_back(delayed_atom(v, is_true));
     }
 
@@ -1305,7 +1315,11 @@ public:
         if (!is_int(v1) && !is_real(v1)) 
             return;
 
-        if (true) {
+        if (false) {                
+            m_deqs.push_back({v1, v2});
+            ctx().push_trail(push_back_vector(m_deqs));
+        }
+        else if (false) {
             enode* n1 = get_enode(v1);
             enode* n2 = get_enode(v2);
             lpvar w1 = register_theory_var_in_lar_solver(v1);
@@ -1342,6 +1356,7 @@ public:
             m_arith_eq_adapter.new_diseq_eh(v1, v2);
     }
 
+// actually have to go over entire stack to ensure diseqs are respected after mutations
     bool delayed_diseqs() {
         if (m_diseqs_qhead == m_diseqs.size())
             return false;
@@ -1359,6 +1374,28 @@ public:
         }
         return has_eq;
     }
+
+    svector<std::pair<theory_var, theory_var>> m_deqs;
+    unsigned m_eqs_qhead = 0;
+// actually have to go over entire stack to ensure eqs are respected after mutations
+    bool delayed_eqs() {
+        if (m_eqs_qhead == m_deqs.size())
+            return false;
+        ctx().push_trail(value_trail(m_eqs_qhead));
+        bool has_eq = false;
+        while (m_eqs_qhead < m_deqs.size()) {
+            auto [v1,v2] = m_deqs[m_eqs_qhead];
+            if (!is_eq(v1, v2)) {
+                //verbose_stream() << "bad diseq " << m_diseqs_qhead << "\n";
+                m_arith_eq_adapter.new_eq_eh(v1, v2);
+                has_eq = true;
+            }
+            ++m_eqs_qhead;
+        }
+        return has_eq;
+    }
+
+
 
     void apply_sort_cnstr(enode* n, sort*) {
         TRACE("arith", tout << "sort constraint: " << enode_pp(n, ctx()) << "\n";);
@@ -1845,7 +1882,10 @@ public:
 
         if (delayed_diseqs())
             return true;
-        
+
+        if (delayed_eqs())
+            return true;
+
                         
         theory_var sz = static_cast<theory_var>(th.get_num_vars());            
         unsigned old_sz = m_assume_eq_candidates.size();
@@ -1989,7 +2029,7 @@ public:
 
     final_check_status final_check_eh() {
 
-        // verbose_stream() << "final " << ctx().get_scope_level() << " " << ctx().assigned_literals().size() << "\n";
+        verbose_stream() << "final " << ctx().get_scope_level() << " " << ctx().assigned_literals().size() << "\n";
         //ctx().display(verbose_stream());
         //exit(0);
         
@@ -1998,14 +2038,14 @@ public:
 
         if (propagate_core())
             return FC_CONTINUE;
-        if (delayed_assume_eqs())
+        if (delayed_assume_eqs()) {
+            verbose_stream() << "delayed-eqs\n";
             return FC_CONTINUE;
+        }
         m_liberal_final_check = true;
         m_changed_assignment = false;
         ctx().push_trail(value_trail<unsigned>(m_final_check_idx));
         final_check_status result = final_check_core();
-        //display(verbose_stream());
-        //exit(0);
         if (result != FC_DONE)
             return result;
         if (!m_changed_assignment)
@@ -2018,7 +2058,6 @@ public:
     }
     
     final_check_status final_check_core() {
-
 
         if (false)
         {
@@ -2094,10 +2133,12 @@ public:
                 switch (m_final_check_idx) {
                 case 0:
                     st = check_lia();
+                    if (st != FC_DONE) verbose_stream() << "check-lia\n";
                     break;
                 case 1:
                     if (assume_eqs()) 
-                        st = FC_CONTINUE;                    
+                        st = FC_CONTINUE;
+                    if (st != FC_DONE) verbose_stream() << "assume-eqs\n";
                     break;
                 case 2:
                     st = check_nla();

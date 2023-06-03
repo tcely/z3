@@ -47,6 +47,10 @@ namespace q {
         if (l.sign() == is_forall(e)) {
             if (m_quantifiers_are_positive && is_forall(e))
                 return;
+            if (is_forall(e) && ctx.is_pos(e)) {
+                verbose_stream() << "is positive\n";
+                return;
+            }
             sat::literal lit = skolemize(q);
             add_clause(~l, lit);
             return;
