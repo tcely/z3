@@ -521,12 +521,17 @@ namespace euf {
         core_solver->assert_expr(m.mk_not(mk_or(clause)));
         lbool ch = core_solver->check_sat(assumptions);
         std::cout << "failed to verify\n" << clause << "\n";
+        std::cout << "check result: " << ch << "\n";
+
         if (ch == l_false) {
             core_solver->get_unsat_core(core);
             std::cout << "core\n";
             for (expr* f : core)
                 std::cout << mk_pp(f, m) << "\n";
         }
+
+        return;
+        
         SASSERT(false);
         
         exit(0);

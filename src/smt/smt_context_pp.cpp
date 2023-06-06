@@ -241,7 +241,7 @@ namespace smt {
                 if (!is_relevant(lit)) out << " n ";
                 out << ": ";
                 display_verbose(out, m, 1, &lit, m_bool_var2expr.data());
-                if (level > 0) {
+                if (level > 0 || true) {
                     auto j = get_justification(lit.var());
                     display(out << " ", j);
                 }
@@ -635,7 +635,7 @@ namespace smt {
             literal_vector lits;
             const_cast<conflict_resolution&>(*m_conflict_resolution).justification2literals(j.get_justification(), lits);
             out << "justification " << j.get_justification()->get_from_theory() << ": ";
-            // display_literals_smt2(out, lits);
+            display_literals_smt2(out, lits);
             break;
         }
         default:

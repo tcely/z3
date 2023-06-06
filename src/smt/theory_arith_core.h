@@ -390,6 +390,7 @@ namespace smt {
         if (v == null_theory_var) {
             v = mk_var(e);
         }
+        
         return v;
     }
 

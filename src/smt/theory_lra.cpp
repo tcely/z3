@@ -378,7 +378,7 @@ class theory_lra::imp {
             if (a.is_extended_numeral(arg2, val)) 
                 std::swap(arg1, arg2);
             if (a.is_extended_numeral(arg1, val)) {
-                st.add(internalize_term_core(to_app(arg2)), val);
+                st.add(internalize_term_core(to_app(arg2)), sign * val);
                 if (reflect(arg)) {
                     internalize_term_core(to_app(arg1));
                     mk_enode(arg);
@@ -386,7 +386,8 @@ class theory_lra::imp {
                 return;
             }
         }
-        st.add(internalize_term_core(arg), sign);
+        else 
+            st.add(internalize_term_core(arg), sign);
     }
 
     theory_var internalize_numeral(app* n, rational const& val) {
@@ -1326,7 +1327,7 @@ public:
             n1->get_th_var(get_id()) != null_theory_var &&
             n2->get_th_var(get_id()) != null_theory_var && n1 != n2) {
             //            verbose_stream() << "ineq\n";
-            m_arith_eq_adapter.mk_axioms(n1, n2);
+            // m_arith_eq_adapter.mk_axioms(n1, n2);
         }
         //        else
         //    verbose_stream() << "skip\n";
@@ -2120,7 +2121,6 @@ public:
         result = final_check_core();
         TRACE("arith", tout << "result: " << result << "\n";);
         if (result == FC_DONE) {
-            verbose_stream() << "second round\n";
             validate_solution();
         }
         return result;
@@ -2247,7 +2247,7 @@ public:
             }
             if (st == FC_DONE) {
                 if (assume_eqs()) {
-                    verbose_stream() << "not done\n";
+                    // verbose_stream() << "not done\n";
                     return FC_CONTINUE;
                 }
 
@@ -2939,6 +2939,7 @@ public:
     literal_vector m_core2;
 
     void assign(literal lit, literal_vector const& core, svector<enode_pair> const& eqs, vector<parameter> const& params) {
+        TRACE("arith", tout << lit << " <- " << core << " #eqs " << eqs.size() << "\n");
         if (core.size() < small_lemma_size() && eqs.empty()) {
             m_core2.reset();
             for (auto const& c : core) {
@@ -3805,7 +3806,8 @@ public:
               for (auto const& p : m_params) tout << " " << p;
               tout << "\n";
               display_evidence(tout, m_explanation);
-              display(tout << "is-conflict: " << is_conflict << "\n"););
+              //display(tout << "is-conflict: " << is_conflict << "\n");
+              );
 
         TRACE("arith_conflict",
               display_evidence(tout, m_explanation);
