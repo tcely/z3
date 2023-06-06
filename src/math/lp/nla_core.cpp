@@ -166,7 +166,10 @@ bool core::check_monic(const monic& m) const {
     if (!is_relevant(m.var()))
         return true;
 #endif
-    SASSERT((!m_lar_solver.column_is_int(m.var())) || m_lar_solver.get_column_value(m.var()).is_int());
+    if (m_lar_solver.column_is_int(m.var()) && !m_lar_solver.get_column_value(m.var()).is_int()) {
+        // verbose_stream() << "not integral\n";
+        return true;
+    }
     bool ret = product_value(m) == m_lar_solver.get_column_value(m.var()).x; 
     CTRACE("nla_solver_check_monic", !ret, print_monic(m, tout) << '\n';);
     return ret;
@@ -1404,7 +1407,7 @@ void core::patch_monomial(lpvar j) {
     }
 }
 
-void core::patch_monomials_on_to_refine() {
+void core::patch_monomials_on_to_refine() {    
     auto to_refine = m_to_refine.index();
     // the rest of the function might change m_to_refine, so have to copy
     unsigned sz = to_refine.size();
@@ -1512,7 +1515,8 @@ lbool core::check(vector<lemma>& l_vec) {
     init_to_refine();
     patch_monomials();
     set_use_nra_model(false);    
-    if (m_to_refine.empty()) { return l_true; }   
+    if (m_to_refine.empty())
+        return l_true;    
     init_search();
 
     lbool ret = l_undef;

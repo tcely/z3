@@ -1522,7 +1522,7 @@ namespace smt {
             switch (m_final_check_idx) {
             case 0:
                 ok = check_int_feasibility();
-                if (ok != FC_DONE) verbose_stream() << "int-feas\n";
+                // if (ok != FC_DONE) verbose_stream() << "int-feas\n";
                 TRACE("arith", tout << "check_int_feasibility(), ok: " << ok << "\n";);
                 break;
             case 1:
@@ -1530,7 +1530,7 @@ namespace smt {
                     ok = FC_CONTINUE;
                 else
                     ok = FC_DONE;
-                if (ok != FC_DONE) verbose_stream() << "assume-eqs\n";
+                //if (ok != FC_DONE) verbose_stream() << "assume-eqs\n";
                 TRACE("arith", tout << "assume_eqs(), ok: " << ok << "\n";);
                 break;
             default:
@@ -1567,7 +1567,7 @@ namespace smt {
     template<typename Ext>
     final_check_status theory_arith<Ext>::final_check_eh() {
  
-        verbose_stream() << "final " << ctx.get_scope_level() << " " << ctx.assigned_literals().size() << "\n";
+        // verbose_stream() << "final " << ctx.get_scope_level() << " " << ctx.assigned_literals().size() << "\n";
         //     ctx.display(verbose_stream());
         // exit(0);
                
@@ -1577,7 +1577,7 @@ namespace smt {
         if (!propagate_core())
             return FC_CONTINUE;
         if (delayed_assume_eqs()) {
-            verbose_stream() << "delayed-eqs\n";
+            //verbose_stream() << "delayed-eqs\n";
             return FC_CONTINUE;
         }
         ctx.push_trail(value_trail<unsigned>(m_final_check_idx));

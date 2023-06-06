@@ -207,9 +207,9 @@ namespace smt {
         if (m.proofs_enabled() && m_proof_hint.empty()) {
             m_proof_hint.push_back(parameter(symbol("triangle-eq")));
         }
-        ctx.mk_th_axiom(tid, ~t1_eq_t2_lit, le_lit, m_proof_hint.size(), m_proof_hint.data());
-        ctx.mk_th_axiom(tid, ~t1_eq_t2_lit, ge_lit, m_proof_hint.size(), m_proof_hint.data());
-        ctx.mk_th_axiom(tid, t1_eq_t2_lit, ~le_lit, ~ge_lit, m_proof_hint.size(), m_proof_hint.data());
+        ctx.mk_th_lemma(tid, ~t1_eq_t2_lit, le_lit, m_proof_hint.size(), m_proof_hint.data());
+        ctx.mk_th_lemma(tid, ~t1_eq_t2_lit, ge_lit, m_proof_hint.size(), m_proof_hint.data());
+        ctx.mk_th_lemma(tid, t1_eq_t2_lit, ~le_lit, ~ge_lit, m_proof_hint.size(), m_proof_hint.data());
         TRACE("arith_eq_adapter", tout << "internalizing: "
               << " " << mk_pp(le, m) << ": " << le_lit 
               << " " << mk_pp(ge, m) << ": " << ge_lit 

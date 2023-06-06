@@ -350,7 +350,7 @@ class theory_lra::imp {
         SASSERT(a.is_add(n));
         scoped_internalize_state st(*this);
         for (expr* arg : *n) 
-            internalize_internal_monomial(to_app(arg), st);
+            internalize_internal_monomial(to_app(arg), st, rational::one());
         
         enode* e = mk_enode(n);
         theory_var v = e->get_th_var(get_id());
@@ -359,7 +359,7 @@ class theory_lra::imp {
         return v;
     }
 
-    void internalize_internal_monomial(app* arg, scoped_internalize_state& st) {
+    void internalize_internal_monomial(app* arg, scoped_internalize_state& st, rational const& sign) {
         expr* arg1, * arg2;
         rational val, val2;
 
@@ -367,13 +367,13 @@ class theory_lra::imp {
             enode* e = ctx().get_enode(arg);
             if (th.is_attached_to_var(e)) {
                 // there is already a theory variable (i.e., name) for arg.
-                st.add(e->get_th_var(get_id()), rational::one());
+                st.add(e->get_th_var(get_id()), sign);
                 return;
             }
         }
 
         if (a.is_extended_numeral(arg, val)) 
-            st.add(internalize_numeral(arg, val), rational::one());        
+            st.add(internalize_numeral(arg, val), sign);        
         else if (a.is_mul(arg, arg1, arg2)) {
             if (a.is_extended_numeral(arg2, val)) 
                 std::swap(arg1, arg2);
@@ -386,7 +386,7 @@ class theory_lra::imp {
                 return;
             }
         }
-        st.add(internalize_term_core(arg), rational::one());
+        st.add(internalize_term_core(arg), sign);
     }
 
     theory_var internalize_numeral(app* n, rational const& val) {
@@ -437,15 +437,21 @@ class theory_lra::imp {
         TRACE("internalize_mul_core", tout << "internalizing...\n" << mk_pp(t, m) << "\n";);
         if (!a.is_mul(t))
             return internalize_term_core(t);
+        svector<lpvar> vars;
         for (expr* arg : *t) {
             theory_var v = internalize_term_core(to_app(arg));
             if (v == null_theory_var) 
-                mk_var(to_app(arg));            
+                v = mk_var(to_app(arg));
+            vars.push_back(register_theory_var_in_lar_solver(v));
         }
         enode* e = mk_enode(t);
         theory_var v = e->get_th_var(get_id());
-        if (v == null_theory_var) 
-            v = mk_var(t);        
+        if (v == null_theory_var) {
+            v = mk_var(t);
+            m_solver->register_existing_terms();
+            ensure_nla();
+            m_nla->add_monic(register_theory_var_in_lar_solver(v), vars.size(), vars.data());
+        }
         return v;
     }
 
@@ -460,13 +466,37 @@ class theory_lra::imp {
         return s;
     }
 
-    theory_var internalize_div(app * n) {
+    theory_var internalize_idiv(app * n) {
         rational r(1);
         theory_var s      = mk_binary_op(n);
         if (!a.is_numeral(n->get_arg(1), r) || r.is_zero())
             found_underspecified(n);
-        if (!ctx().relevancy())
-            mk_div_axiom(n->get_arg(0), n->get_arg(1));
+        expr* n1, *n2;
+        VERIFY(a.is_idiv(n, n1, n2));
+        app_ref mod(a.mk_mod(n1, n2), m);
+        ctx().internalize(mod, false);
+        if (ctx().relevancy()) ctx().add_relevancy_dependency(n, mod);
+        if (m_nla && !a.is_numeral(n2)) {
+            // shortcut to create non-linear division axioms.
+            internalize_term(to_app(n));
+            internalize_term(to_app(n1));
+            internalize_term(to_app(n2));
+            theory_var q = mk_var(n);
+            theory_var x = mk_var(n1);
+            theory_var y = mk_var(n2);
+            m_nla->add_idivision(register_theory_var_in_lar_solver(q), register_theory_var_in_lar_solver(x), register_theory_var_in_lar_solver(y));
+        }
+        if (a.is_numeral(n2) && a.is_bounded(n1)) {
+            ensure_nla();
+            internalize_term(to_app(n));
+            internalize_term(to_app(n1));
+            internalize_term(to_app(n2));
+            theory_var q = mk_var(n);
+            theory_var x = mk_var(n1);
+            theory_var y = mk_var(n2);
+            m_nla->add_bounded_division(register_theory_var_in_lar_solver(q), register_theory_var_in_lar_solver(x), register_theory_var_in_lar_solver(y));
+        }
+        if (!ctx().relevancy()) mk_idiv_mod_axioms(n1, n2);    
         return s;
     }
 
@@ -479,6 +509,35 @@ class theory_lra::imp {
         ctx().internalize(n->get_arg(1), false);
         enode* e = mk_enode(n);
         return mk_var(n);
+    }
+
+    theory_var internalize_uminus(app* n) {
+
+        scoped_internalize_state st(*this);
+        for (expr* arg : *n) 
+            internalize_internal_monomial(to_app(arg), st, rational::minus_one());
+        
+        enode* e = mk_enode(n);
+        theory_var v = e->get_th_var(get_id());
+        if (v == null_theory_var) 
+            v = internalize_linearized_def(n, st);        
+        return v;
+    }
+
+    theory_var internalize_minus(app* n) {
+
+        scoped_internalize_state st(*this);
+        bool first = true;
+        for (expr* arg : *n) {
+            internalize_internal_monomial(to_app(arg), st, first ? rational::one():rational::minus_one());
+            first = false;
+        }
+        
+        enode* e = mk_enode(n);
+        theory_var v = e->get_th_var(get_id());
+        if (v == null_theory_var) 
+            v = internalize_linearized_def(n, st);        
+        return v;
     }
 
 
@@ -495,8 +554,6 @@ class theory_lra::imp {
                 return e->get_th_var(get_id());
         }
 
-        SASSERT(!a.is_uminus(n));
-
         rational val;
 
         if (a.is_add(n))
@@ -508,9 +565,13 @@ class theory_lra::imp {
         else if (a.is_mod(n))
             return internalize_mod(n);
         else if (a.is_idiv(n))
-            return internalize_mod(n);
+            return internalize_idiv(n);
         else if (a.is_div(n))
-            return internalize_div(n);
+            return internalize_mod(n);
+        else if (a.is_uminus(n)) 
+            return internalize_uminus(n);
+        else if (a.is_sub(n))
+            return internalize_minus(n);
         else if (a.get_family_id() == n->get_family_id()) {
             if (!a.is_div0(n) && !a.is_mod0(n) && !a.is_idiv0(n) && !a.is_rem0(n))
                 found_unsupported(n);
@@ -604,7 +665,7 @@ class theory_lra::imp {
                 coeffs[vars.size()] = r * coeffs[index];
                 vars.push_back(v);
                 get_lpvar(v);
-                verbose_stream() << v << "\n";
+                //verbose_stream() << v << "\n";
                 st.to_ensure_enode().push_back(n1);
                 ++index;
             }
@@ -1562,6 +1623,7 @@ public:
 
     }
 
+#if 0
     // create axiom for 
     //    u = v + r*w,
     ///   abs(r) > r >= 0
@@ -1580,11 +1642,13 @@ public:
         SASSERT(!is_infeasible());
         TRACE("arith", tout << term << "\n" << lp().constraints(););
     }
+#endif
 
     void mk_idiv_mod_axioms(expr * p, expr * q) {
         if (a.is_zero(q)) {
             return;
         }
+        
         TRACE("arith", tout << expr_ref(p, m) << " " << expr_ref(q, m) << "\n";);
         // if q is zero, then idiv and mod are uninterpreted functions.
         expr_ref div(a.mk_idiv(p, q), m);
@@ -2029,7 +2093,7 @@ public:
 
     final_check_status final_check_eh() {
 
-        verbose_stream() << "final " << ctx().get_scope_level() << " " << ctx().assigned_literals().size() << "\n";
+        // verbose_stream() << "final " << ctx().get_scope_level() << " " << ctx().assigned_literals().size() << "\n";
         //ctx().display(verbose_stream());
         //exit(0);
         
@@ -2039,7 +2103,6 @@ public:
         if (propagate_core())
             return FC_CONTINUE;
         if (delayed_assume_eqs()) {
-            verbose_stream() << "delayed-eqs\n";
             return FC_CONTINUE;
         }
         m_liberal_final_check = true;
@@ -2048,12 +2111,18 @@ public:
         final_check_status result = final_check_core();
         if (result != FC_DONE)
             return result;
-        if (!m_changed_assignment)
+        if (!m_changed_assignment) {
+            validate_solution();
             return FC_DONE;
+        }
         m_liberal_final_check = false;
         m_changed_assignment = false;
         result = final_check_core();
         TRACE("arith", tout << "result: " << result << "\n";);
+        if (result == FC_DONE) {
+            verbose_stream() << "second round\n";
+            validate_solution();
+        }
         return result;
     }
     
@@ -2133,12 +2202,10 @@ public:
                 switch (m_final_check_idx) {
                 case 0:
                     st = check_lia();
-                    if (st != FC_DONE) verbose_stream() << "check-lia\n";
                     break;
                 case 1:
                     if (assume_eqs()) 
                         st = FC_CONTINUE;
-                    if (st != FC_DONE) verbose_stream() << "assume-eqs\n";
                     break;
                 case 2:
                     st = check_nla();
@@ -2177,6 +2244,13 @@ public:
                 }
                 if (st == FC_CONTINUE)
                     break;
+            }
+            if (st == FC_DONE) {
+                if (assume_eqs()) {
+                    verbose_stream() << "not done\n";
+                    return FC_CONTINUE;
+                }
+
             }
             return st;
         case l_false:
@@ -4009,7 +4083,62 @@ public:
         for (auto const& eq : m_eqs) {
             nctx.assert_expr(m.mk_eq(eq.first->get_expr(), eq.second->get_expr()));
         }
-    }        
+    }
+
+
+    void validate_solution() {
+        return;
+        verbose_stream() << "validate solution\n";
+
+        unsigned nv = th.get_num_vars();
+        for (unsigned v = 0; v < nv; ++v) {
+            auto t = get_tv(v);
+            auto vi = lp().external_to_column_index(v);
+
+            if (!is_registered_var(v))
+                continue;
+            
+            auto* n = get_enode(v);
+            expr* e = n->get_expr(), *e1, *e2;
+            rational r, r1, r2;
+            if (use_nra_model())
+                m_nla->am().display(verbose_stream() << " = ", nl_value(v, *m_a1)) << "\n";
+            else {
+                r = lp().get_tv_value(get_tv(v));
+                verbose_stream() << r << "\n";
+                if (a.is_mod(e, e1, e2)) {
+                    auto v1 = th.get_th_var(e1);
+                    auto v2 = th.get_th_var(e2);
+                    r1 = lp().get_tv_value(get_tv(v1));
+                    r2 = lp().get_tv_value(get_tv(v2));
+                    if (r2 > 0)
+                        VERIFY(r == r1 % r2);
+                }
+                else if (a.is_idiv(e, e1, e2)) {
+                    auto v1 = th.get_th_var(e1);
+                    auto v2 = th.get_th_var(e2);
+                    r1 = lp().get_tv_value(get_tv(v1));
+                    r2 = lp().get_tv_value(get_tv(v2));
+                    verbose_stream() << mk_pp(e, m) << " " << r << " == " << r1 << " div " << r2 << "\n";
+                    if (r2 > 0)
+                        VERIFY(r == div(r1, r2));
+                }
+                else if (a.is_add(e)) {
+                    verbose_stream() << "add v" << v << " " << r <<"\n";
+                }
+                else if (a.is_numeral(e, r2)) {
+                    VERIFY(r == r2);
+                }
+                else if (is_uninterp_const(e)) {
+
+                }
+                else {
+                    verbose_stream() << "other " << enode_pp(n, ctx()) << "\n";
+                }
+            }
+        }
+
+    }
 
     theory_lra::inf_eps value(theory_var v) {
         lp::impq ival = get_ivalue(v);
