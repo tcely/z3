@@ -354,6 +354,7 @@ class theory_lra::imp {
         
         enode* e = mk_enode(n);
         theory_var v = e->get_th_var(get_id());
+        TRACE("add_bug", tout << mk_pp(n, m) << " - v" << v << "\n");
         if (v == null_theory_var) 
             v = internalize_linearized_def(n, st);        
         return v;
@@ -372,8 +373,10 @@ class theory_lra::imp {
             }
         }
 
-        if (a.is_extended_numeral(arg, val)) 
-            st.add(internalize_numeral(arg, val), sign);        
+        if (a.is_extended_numeral(arg, val)) {
+            st.add(internalize_numeral(arg, val), sign);
+            return;
+        }
         else if (a.is_mul(arg, arg1, arg2)) {
             if (a.is_extended_numeral(arg2, val)) 
                 std::swap(arg1, arg2);
@@ -386,8 +389,7 @@ class theory_lra::imp {
                 return;
             }
         }
-        else 
-            st.add(internalize_term_core(arg), sign);
+        st.add(internalize_term_core(arg), sign);
     }
 
     theory_var internalize_numeral(app* n, rational const& val) {
@@ -508,7 +510,7 @@ class theory_lra::imp {
             return mk_var(n);
         ctx().internalize(n->get_arg(0), false);
         ctx().internalize(n->get_arg(1), false);
-        enode* e = mk_enode(n);
+        mk_enode(n);
         return mk_var(n);
     }
 
@@ -2852,9 +2854,9 @@ public:
             CTRACE("arith", m_unassigned_bounds[v] == 0, tout << "missed bound\n";);
             updt_unassigned_bounds(v, -1);
             TRACE("arith",
-                  ctx().display_literals_verbose(tout, m_core);
+                  ctx().display_literals_smt2(tout, m_core);
                   tout << "\n --> ";
-                  ctx().display_literal_verbose(tout, lit);
+                  ctx().display_literal_smt2(tout, lit);
                   tout << "\n";
                   display_evidence(tout, m_explanation);
                   lp().print_implied_bound(be, tout);
