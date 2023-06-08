@@ -510,9 +510,6 @@ namespace smt {
 #else
         strm << "lemma_" << (++m_lemma_id) << ".smt2";
 #endif
-        if (m_lemma_id == 1303) {
-            verbose_stream() << "lemma\n";
-        }
         return strm.str();
     }
 

@@ -103,37 +103,42 @@ namespace lp {
         mpq r = fractional_part(lra.get_value(v));
         SASSERT(0 < a && a < 1);
         SASSERT(0 < r && r < 1);
-        if (!divides(denominator(a), denominator(r)))
+        if (!divides(denominator(r), denominator(a)))
             return false;
         // stronger filter for now:
-        if (denominator(a) != denominator(r))
+        // if a = r = 1/2 then both patch directions are attempted.
+
+        if (a == r || a == 1 - r) {            
+            if (try_patch_column(v, c.var(), mpq(1)))
+                return true;
+            if (try_patch_column(v, c.var(), mpq(-1)))
+                return true;
             return false;
-        if (a == r) {
-            if (try_patch_column(c.var(), mpq(a.is_pos() ? 1 : -1)))
-                return true;
-        }
-        if (a == 1 - r) {
-            if (try_patch_column(c.var(), mpq(a.is_pos() ? -1 : 1)))
-                return true;
         }
         rational x, y;
         rational g = gcd(numerator(a), denominator(a), x, y);
+        rational scale = denominator(a)/denominator(r);
+        VERIFY(scale.is_int() && scale > 0);
         // g = numerator(a)*x + denominator(a)*y
-        x = abs(x);
+        VERIFY(g == numerator(a)*x + denominator(a)*y);
         if (divides(g, numerator(r))) {
-            auto xs = a.is_pos() ? x : -x;
-            if (try_patch_column(c.var(), xs*(numerator(r)/g)))
+            if (try_patch_column(v, c.var(), scale*x*(numerator(r)/g)))
                 return true;
+            if (try_patch_column(v, c.var(), -scale*x*(numerator(r)/g)))
+                return true;
+            return false;
         }
         if (divides(g, numerator(1 - r))) {
-            auto xs = a.is_pos() ? -x : x;
-            if (try_patch_column(c.var(), xs*(numerator(r)/g)))
+            if (try_patch_column(v, c.var(), scale*x*(numerator(1 - r)/g)))
                 return true;
+            if (try_patch_column(v, c.var(), -scale*x*(numerator(1 - r)/g)))
+                return true;
+            return false;
         }
         return false;
     }
 
-    bool int_solver::patcher::try_patch_column(unsigned j, mpq const& delta) {
+    bool int_solver::patcher::try_patch_column(unsigned v, unsigned j, mpq const& delta) {
         const auto & A = lra.A_r();
         unsigned make_count = 0, break_count = 0;
         if (delta < 0) {
