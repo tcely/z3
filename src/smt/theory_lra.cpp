@@ -2252,6 +2252,9 @@ public:
                     // verbose_stream() << "not done\n";
                     return FC_CONTINUE;
                 }
+                st = check_nla();
+                if (st != FC_DONE)
+                    return st;
 
             }
             return st;

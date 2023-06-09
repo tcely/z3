@@ -416,8 +416,9 @@ namespace smt {
             unsigned r_id = mk_row();
             scoped_row_vars _sc(m_row_vars, m_row_vars_top);
             check_app(arg1, m);
-            if (reflection_enabled())
+            if (reflection_enabled()) {
                 internalize_term_core(to_app(arg0));
+            }
             theory_var v = internalize_mul_core(to_app(arg1));
             add_row_entry<true>(r_id, val, v);
             enode * e      = mk_enode(m);
@@ -1535,6 +1536,9 @@ namespace smt {
                 TRACE("arith", tout << "assume_eqs(), ok: " << ok << "\n";);
                 break;
             default:
+                TRACE("arith", ctx.display(tout));
+                ctx.display(verbose_stream());
+                exit(0);
                 ok = process_non_linear();
                 TRACE("arith", tout << "non_linear(), ok: " << ok << "\n";);
                 break;
