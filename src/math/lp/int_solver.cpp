@@ -48,14 +48,17 @@ namespace lp {
         remove_fixed_vars_from_base();
         lia.settings().stats().m_patches++;
         lp_assert(lia.is_feasible());
+        
+        unsigned non_int_before, non_int_after;
 
-        //unsigned non_int_before = count_non_int();
+        non_int_before = count_non_int();
         unsigned num = lra.A_r().column_count();
         for (unsigned j : lra.r_basis()) 
             if (!lra.get_value(j).is_int())
                 patch_basic_column(j);
-        //unsigned non_int_after = count_non_int();
-        // verbose_stream() << non_int_before << " -> " << non_int_after << "\n";
+        non_int_after = count_non_int();
+        //        verbose_stream() << non_int_before << " -> " << non_int_after << "\n";
+
         if (!lia.has_inf_int()) {
             lia.settings().stats().m_patches_success++;
             return lia_move::sat;
@@ -92,6 +95,8 @@ namespace lp {
      * Initial experiment: use bare bones case x1/x2 = a1/a2, x1/x2 = 1 - a1/a2
      */
 
+    static bool s_failed_to_patch = false;
+
     bool int_solver::patcher::patch_basic_column(unsigned v, row_cell<mpq> const& c) {
         if (v == c.var())
             return false;
@@ -101,40 +106,60 @@ namespace lp {
             return false;
         mpq a = fractional_part(c.coeff());
         mpq r = fractional_part(lra.get_value(v));
-        SASSERT(0 < a && a < 1);
-        SASSERT(0 < r && r < 1);
-        if (!divides(denominator(r), denominator(a)))
+        VERIFY(0 < r && r < 1);
+        VERIFY(0 < a && a < 1);
+        auto a1 = numerator(a), a2 = denominator(a);
+        auto x1 = numerator(r), x2 = denominator(r);
+        if (!divides(x2, a2))
             return false;
-        // stronger filter for now:
-        // if a = r = 1/2 then both patch directions are attempted.
 
-        if (a == r || a == 1 - r) {            
-            if (try_patch_column(v, c.var(), mpq(1)))
-                return true;
-            if (try_patch_column(v, c.var(), mpq(-1)))
-                return true;
-            return false;
+        rational X1, Y;
+        rational g = gcd(a1, a2, X1, Y);
+        VERIFY(g == 1);
+        VERIFY((X1 < 0 && Y >= 0) || (X1 > 0 && Y <= 0));
+        VERIFY(g == a1*X1 + a2*Y);
+
+        auto sign_a = a > 0 ? 1 : -1;
+        auto delta = sign_a * (x1 * a2 / x2) * X1;
+        if (try_patch_column(v, c.var(), delta))
+            return true;
+
+        if (s_failed_to_patch) {
+            verbose_stream() << "beta(x) " << lra.get_value(v) << "\n";
+            verbose_stream() << "coeff: " << c.coeff() << "\n";
+            verbose_stream() << "f_x " << r << "\n";
+            verbose_stream() << "a " << a << "\n";
+            verbose_stream() << g << " == " << a1 << "*" << X1 << " + " << a2 << "*" << Y << "\n";
+
+            const auto & A = lra.A_r();
+            unsigned row_index = lra.row_of_basic_column(v);
+            lia.display_row(verbose_stream(), A.m_rows[row_index]);
+            exit(0);
         }
-        rational x, y;
-        rational g = gcd(numerator(a), denominator(a), x, y);
-        rational scale = denominator(a)/denominator(r);
-        VERIFY(scale.is_int() && scale > 0);
-        // g = numerator(a)*x + denominator(a)*y
-        VERIFY(g == numerator(a)*x + denominator(a)*y);
-        if (divides(g, numerator(r))) {
-            if (try_patch_column(v, c.var(), scale*x*(numerator(r)/g)))
-                return true;
-            if (try_patch_column(v, c.var(), -scale*x*(numerator(r)/g)))
-                return true;
-            return false;
+
+        auto k = ceil(abs(X1)/a2);
+        auto X2 = X1 > 0 ? X1 - k*a2 : X1 + k*a2;
+        VERIFY(X1 < 0 || X2 <= 0);
+        VERIFY(X1 > 0 || X2 >= 0);
+        //verbose_stream() << "k " << k << " " << X1 << " " << X2 << "\n";
+        auto delta2 = sign_a * (x1 * a2 / x2) * X2;
+        if (try_patch_column(v, c.var(), delta2)) 
+            return true;
+
+        if (s_failed_to_patch) {
+            verbose_stream() << "beta(x) " << lra.get_value(v) << "\n";
+            verbose_stream() << "coeff: " << c.coeff() << "\n";
+            verbose_stream() << "f_x " << r << "\n";
+            verbose_stream() << "a " << a << "\n";
+            verbose_stream() << g << " == " << a1 << "*" << X1 << " + " << a2 << "*" << Y << "\n";
+
+            const auto & A = lra.A_r();
+            unsigned row_index = lra.row_of_basic_column(v);
+            lia.display_row(verbose_stream(), A.m_rows[row_index]);
+            exit(0);
         }
-        if (divides(g, numerator(1 - r))) {
-            if (try_patch_column(v, c.var(), scale*x*(numerator(1 - r)/g)))
-                return true;
-            if (try_patch_column(v, c.var(), -scale*x*(numerator(1 - r)/g)))
-                return true;
-            return false;
-        }
+
+       
         return false;
     }
 
@@ -162,6 +187,9 @@ namespace lp {
                 break_count++;
             else if (!old_val.is_int() && new_val.is_int())
                 make_count++;
+            if (i == v && !new_val.is_int())
+                s_failed_to_patch = true;            
+            
         }
         if (make_count > break_count) {
 #if 0

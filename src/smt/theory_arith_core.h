@@ -1537,8 +1537,6 @@ namespace smt {
                 break;
             default:
                 TRACE("arith", ctx.display(tout));
-                ctx.display(verbose_stream());
-                exit(0);
                 ok = process_non_linear();
                 TRACE("arith", tout << "non_linear(), ok: " << ok << "\n";);
                 break;
