@@ -133,7 +133,7 @@ public:
     
     
     bool r_basis_is_OK() const {
-#ifdef Z3DEBUG
+#ifdef _Z3DEBUG_
         
         for (unsigned j : m_r_solver.m_basis) {
             lp_assert(m_r_solver.m_A.m_columns[j].size() == 1);

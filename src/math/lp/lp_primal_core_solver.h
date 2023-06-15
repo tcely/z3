@@ -33,6 +33,8 @@ Revision History:
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include "util/heap.h"
+
 namespace lp {
 
 // This core solver solves (Ax=b, lower_bound_values \leq x \leq
@@ -152,19 +154,23 @@ public:
     UNREACHABLE(); // unreachable
     return false;
   }
-
-  unsigned get_number_of_basic_vars_that_might_become_inf(
-      unsigned j) const { // consider looking at the signs here: todo
+/**
+ * Return the number of base variables depending on the column j,
+ * but take the min with the (bound+1).
+ * This function is used to select the pivot variable.
+*/
+  unsigned get_num_non_free_dep_vars(
+      unsigned j, unsigned bound) const { // consider looking at the signs here: todo
     unsigned r = 0;
     for (const auto &cc : this->m_A.m_columns[j]) {
-      unsigned k = this->m_basis[cc.var()];
-      if (this->m_column_types[k] != column_type::free_column)
-        r++;
+      if (this->m_column_types[this->m_basis[cc.var()]] != column_type::free_column) {        
+         if (++r > bound) return r;
+      }
     }
     return r;
   }
 
-  int find_beneficial_column_in_row_tableau_rows_bland_mode(int i, T &a_ent) {
+  int find_beneficial_entering_in_row_tableau_rows_bland_mode(int i, T &a_ent) {
     int j = -1;
     unsigned bj = this->m_basis[i];
     bool bj_needs_to_grow = needs_to_grow(bj);
@@ -190,15 +196,15 @@ public:
     return j;
   }
 
-  int find_beneficial_column_in_row_tableau_rows(int i, T &a_ent) {
+  int find_beneficial_entering_tableau_rows(int i, T &a_ent) {
     if (m_bland_mode_tableau)
-      return find_beneficial_column_in_row_tableau_rows_bland_mode(i, a_ent);
+      return find_beneficial_entering_in_row_tableau_rows_bland_mode(i, a_ent);
     // a short row produces short infeasibility explanation and benefits at
     // least one pivot operation
     int choice = -1;
     int nchoices = 0;
-    unsigned num_of_non_free_basics = 1000000;
-    unsigned len = 100000000;
+    unsigned min_non_free_so_far = -1;
+    unsigned best_col_sz = -1;
     unsigned bj = this->m_basis[i];
     bool bj_needs_to_grow = needs_to_grow(bj);
     for (unsigned k = 0; k < this->m_A.m_rows[i].size(); k++) {
@@ -213,17 +219,18 @@ public:
         if (!monoid_can_increase(rc))
           continue;
       }
-      unsigned damage = get_number_of_basic_vars_that_might_become_inf(j);
-      if (damage < num_of_non_free_basics) {
-        num_of_non_free_basics = damage;
-        len = this->m_A.m_columns[j].size();
+      unsigned not_free = get_num_non_free_dep_vars(j, min_non_free_so_far);
+      unsigned col_sz = this->m_A.m_columns[j].size();
+      if (not_free < min_non_free_so_far || (not_free == min_non_free_so_far && col_sz < best_col_sz)) {
+        min_non_free_so_far = not_free;
+        best_col_sz = this->m_A.m_columns[j].size();
         choice = k;
         nchoices = 1;
-      } else if (damage == num_of_non_free_basics &&
-                 this->m_A.m_columns[j].size() <= len &&
-                 (this->m_settings.random_next() % (++nchoices))) {
-        choice = k;
-        len = this->m_A.m_columns[j].size();
+      } else if (not_free == min_non_free_so_far &&
+                 col_sz == best_col_sz) {
+        if (this->m_settings.random_next(++nchoices) == 0){         
+          choice = k;          
+        }
       }
     }
 
@@ -282,7 +289,7 @@ public:
       unsigned j, vector<unsigned> &leavings, T m, X &t,
       T &abs_of_d_of_leaving);
 
-  X get_max_bound(vector<X> &b);
+ 
 
 #ifdef Z3DEBUG
   void check_Ax_equal_b();
@@ -291,14 +298,6 @@ public:
   void check_correctness();
 #endif
 
-  // from page 183 of Istvan Maros's book
-  // the basis structures have not changed yet
-  void update_reduced_costs_from_pivot_row(unsigned entering, unsigned leaving);
-
-  // return 0 if the reduced cost at entering is close enough to the refreshed
-  // 1 if it is way off, and 2 if it is unprofitable
-  int refresh_reduced_cost_at_entering_and_check_that_it_is_off(
-      unsigned entering);
 
   void backup_and_normalize_costs();
 
@@ -365,6 +364,8 @@ public:
     return j;
   }
 
+  
+
   const X &get_val_for_leaving(unsigned j) const {
     lp_assert(!this->column_is_feasible(j));
     switch (this->m_column_types[j]) {
@@ -405,7 +406,7 @@ public:
       }
     }
     T a_ent;
-    int entering = find_beneficial_column_in_row_tableau_rows(
+    int entering = find_beneficial_entering_tableau_rows(
         this->m_basis_heading[leaving], a_ent);
     if (entering == -1) {
       this->set_status(lp_status::INFEASIBLE);

@@ -38,11 +38,11 @@ void set_default_debug_action(debug_action a);
 #include "util/error_codes.h"
 #include "util/warning.h"
 
-#ifdef Z3DEBUG
-#define DEBUG_CODE(CODE) { CODE } ((void) 0)
-#else
+// #ifdef Z3DEBUG
+// #define DEBUG_CODE(CODE) { CODE } ((void) 0)
+// #else
 #define DEBUG_CODE(CODE) ((void) 0)
-#endif
+// #endif
 
 #ifdef __APPLE__
 #include <TargetConditionals.h>

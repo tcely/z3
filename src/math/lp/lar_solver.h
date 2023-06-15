@@ -386,6 +386,7 @@ public:
         return tv::is_term(idx)?
             m_term_register.local_to_external(idx) : m_var_register.local_to_external(idx);
     }
+   
     bool column_corresponds_to_term(unsigned) const;
     inline unsigned row_count() const { return A_r().row_count(); }
     bool var_is_registered(var_index vj) const;
