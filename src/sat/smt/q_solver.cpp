@@ -17,6 +17,7 @@ Author:
 
 #include "ast/ast_util.h"
 #include "ast/well_sorted.h"
+#include "ast/rewriter/rewriter_def.h"
 #include "ast/rewriter/var_subst.h"
 #include "ast/normal_forms/pull_quant.h"
 #include "ast/rewriter/inj_axiom.h"
