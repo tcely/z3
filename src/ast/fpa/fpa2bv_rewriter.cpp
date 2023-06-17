@@ -18,7 +18,6 @@ Notes:
 --*/
 
 
-#include "ast/rewriter/rewriter_def.h"
 #include "ast/fpa/fpa2bv_rewriter.h"
 #include "params/fpa2bv_rewriter_params.hpp"
 
