@@ -26,7 +26,6 @@ Revision History:
 #include "ast/normal_forms/pull_quant.h"
 #include "ast/well_sorted.h"
 #include "ast/for_each_expr.h"
-#include "ast/rewriter/rewriter_def.h"
 
 void smaller_pattern::save(expr * p1, expr * p2) {
     expr_pair e(p1, p2);
