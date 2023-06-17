@@ -411,3 +411,4 @@ public:
         rewriter_tpl<beta_reducer_cfg>(m, false, m_cfg) {}
 };
 
+#include "ast/rewriter/rewriter_def.h"
