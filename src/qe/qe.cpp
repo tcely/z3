@@ -40,7 +40,6 @@ Revision History:
 #include "smt/smt_kernel.h"
 #include "model/model_evaluator.h"
 #include "ast/has_free_vars.h"
-#include "ast/rewriter/rewriter_def.h"
 #include "tactic/tactical.h"
 #include "model/model_v2_pp.h"
 #include "util/obj_hashtable.h"
